@@ -16,7 +16,7 @@ export default function StartupScreen() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Tatu</Text>
+      <Text style={styles.title}>TATU</Text>
     </View>
   );
 }
