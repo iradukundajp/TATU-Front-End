@@ -1,17 +1,22 @@
-import React, { useState } from 'react';
-import { View, Text, Button, StyleSheet, TouchableOpacity, TextInput, Alert } from 'react-native';
+import React, { useState } from 'react'; // Added useState
+import { View, Text, Button, StyleSheet, TouchableOpacity, TextInput, Alert } from 'react-native'; // Added TextInput, Alert
 import { useRouter, Link } from 'expo-router';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 
 export default function LoginScreen() {
   const router = useRouter();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState(''); // Added email state
+  const [password, setPassword] = useState(''); // Added password state
 
-  const handleLogin = async () => {
+  const handleLogin = async () => { // Added handleLogin function
     try {
-      const response = await fetch('http://localhost:5000/api/auth/login', {
+      const apiUrl = process.env.EXPO_PUBLIC_API_BASE_URL;
+      if (!apiUrl) {
+        Alert.alert('Error', 'API URL is not configured. Please check your .env.local file.');
+        return;
+      }
+      const response = await fetch(`${apiUrl}/api/auth/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -22,10 +27,8 @@ export default function LoginScreen() {
       const data = await response.json();
 
       if (response.ok) {
-        // Assuming the API returns a token or some success message
         console.log('Login successful:', data);
-        // Navigate to the Explore screen within the tabs
-        router.replace('/explore');
+        router.replace('/explore'); // Navigate to explore on success
       } else {
         Alert.alert('Login Failed', data.message || 'Something went wrong');
       }
@@ -39,7 +42,7 @@ export default function LoginScreen() {
     <ThemedView style={styles.container}>
       <ThemedText type="title" style={styles.title}>Login</ThemedText>
       <TextInput
-        style={styles.input}
+        style={styles.input} // Added input style
         placeholder="Email"
         value={email}
         onChangeText={setEmail}
@@ -47,7 +50,7 @@ export default function LoginScreen() {
         autoCapitalize="none"
       />
       <TextInput
-        style={styles.input}
+        style={styles.input} // Added input style
         placeholder="Password"
         value={password}
         onChangeText={setPassword}
@@ -73,7 +76,7 @@ const styles = StyleSheet.create({
   title: {
     marginBottom: 20,
   },
-  input: {
+  input: { // Added input style definition
     width: '100%',
     height: 40,
     borderColor: 'gray',
@@ -81,6 +84,7 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     paddingHorizontal: 10,
     borderRadius: 5,
+    color: 'white',
   },
   registerButton: {
     marginTop: 15,

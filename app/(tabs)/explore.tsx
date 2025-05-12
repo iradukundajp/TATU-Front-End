@@ -13,14 +13,20 @@ export default function ExploreScreen() {
       headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
       headerImage={
         <ThemedView style={styles.headerTextView}>
-          <ThemedText type="title" style={styles.headerText}>TATU</ThemedText>
+          <ThemedText
+            type="title"
+            style={styles.headerText}
+            numberOfLines={1}
+            adjustsFontSizeToFit={true}
+          >
+            TATU
+          </ThemedText>
         </ThemedView>
       }>
       <ThemedView style={styles.titleContainer}>
         <ThemedText type="title">Explore</ThemedText>
       </ThemedView>
 
-      {/* Placeholder Sections */}
       <ThemedView style={styles.sectionContainer}>
         <ThemedText type="subtitle" style={styles.sectionTitle}>Highlights</ThemedText>
         <ThemedView style={styles.placeholderBox}>
@@ -29,7 +35,6 @@ export default function ExploreScreen() {
         <ThemedView style={styles.placeholderBox}>
           <ThemedText style={styles.placeholderText}>Highlight 2</ThemedText>
         </ThemedView>
-        {/* Add more highlight items or a horizontal scroll view here */}
       </ThemedView>
 
       <ThemedView style={styles.sectionContainer}>
@@ -40,7 +45,6 @@ export default function ExploreScreen() {
         <ThemedView style={styles.placeholderBox}>
           <ThemedText style={styles.placeholderText}>Artist Profile 2</ThemedText>
         </ThemedView>
-        {/* Add more artist items or a horizontal scroll view here */}
       </ThemedView>
 
       <ThemedView style={styles.sectionContainer}>
@@ -51,9 +55,11 @@ export default function ExploreScreen() {
         <ThemedView style={styles.placeholderBox}>
           <ThemedText style={styles.placeholderText}>Tattoo Image 2</ThemedText>
         </ThemedView>
-        {/* Add more tattoo items or a horizontal scroll view here */}
       </ThemedView>
 
+      
+        
+      
     </ParallaxScrollView>
   );
 }
@@ -65,7 +71,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   headerText: {
-    fontSize: 48,
+    fontSize: 36,
     fontWeight: 'bold',
     color: '#FFFFFF',
     textAlign: 'center',
