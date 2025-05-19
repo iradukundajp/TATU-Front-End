@@ -1,40 +1,33 @@
-import React, { useState } from 'react'; // Added useState
-import { View, Text, Button, StyleSheet, TouchableOpacity, TextInput, Alert } from 'react-native'; // Added TextInput, Alert
+import React, { useState } from 'react';
+import { StyleSheet, TextInput, Alert, ActivityIndicator } from 'react-native';
 import { useRouter, Link } from 'expo-router';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
+import { TouchableFix } from '@/components/TouchableFix';
+import { useAuth } from '@/contexts/AuthContext';
 
 export default function LoginScreen() {
   const router = useRouter();
-  const [email, setEmail] = useState(''); // Added email state
-  const [password, setPassword] = useState(''); // Added password state
+  const { login } = useAuth();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const handleLogin = async () => { // Added handleLogin function
+  const handleLogin = async () => {
+    if (!email || !password) {
+      Alert.alert('Error', 'Please enter both email and password');
+      return;
+    }
+
+    setLoading(true);
     try {
-      const apiUrl = process.env.EXPO_PUBLIC_API_BASE_URL;
-      if (!apiUrl) {
-        Alert.alert('Error', 'API URL is not configured. Please check your .env.local file.');
-        return;
-      }
-      const response = await fetch(`${apiUrl}/api/auth/login`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ email, password }),
-      });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        console.log('Login successful:', data);
-        router.replace('/explore'); // Navigate to explore on success
-      } else {
-        Alert.alert('Login Failed', data.message || 'Something went wrong');
-      }
+      await login(email, password);
+      router.replace('/(tabs)/explore');
     } catch (error) {
       console.error('Login error:', error);
-      Alert.alert('Login Error', 'An error occurred while trying to log in.');
+      Alert.alert('Login Failed', error instanceof Error ? error.message : 'Something went wrong');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -42,25 +35,39 @@ export default function LoginScreen() {
     <ThemedView style={styles.container}>
       <ThemedText type="title" style={styles.title}>Login</ThemedText>
       <TextInput
-        style={styles.input} // Added input style
+        style={styles.input}
         placeholder="Email"
         value={email}
         onChangeText={setEmail}
         keyboardType="email-address"
         autoCapitalize="none"
+        editable={!loading}
       />
       <TextInput
-        style={styles.input} // Added input style
+        style={styles.input}
         placeholder="Password"
         value={password}
         onChangeText={setPassword}
         secureTextEntry
+        editable={!loading}
       />
-      <Button title="Login" onPress={handleLogin} />
+      
+      <TouchableFix 
+        style={[styles.loginButton, loading && styles.loginButtonDisabled]} 
+        onPress={handleLogin}
+        disabled={loading}
+      >
+        {loading ? (
+          <ActivityIndicator color="#FFFFFF" size="small" />
+        ) : (
+          <ThemedText style={styles.loginButtonText}>Login</ThemedText>
+        )}
+      </TouchableFix>
+      
       <Link href="/register" asChild>
-        <TouchableOpacity style={styles.registerButton}>
+        <TouchableFix style={styles.registerButton} disabled={loading}>
           <ThemedText type="link">Don't have an account? Register</ThemedText>
-        </TouchableOpacity>
+        </TouchableFix>
       </Link>
     </ThemedView>
   );
@@ -74,20 +81,40 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   title: {
+    fontSize: 24,
+    fontWeight: 'bold',
     marginBottom: 20,
   },
-  input: { // Added input style definition
+  input: {
     width: '100%',
-    height: 40,
+    height: 50,
     borderColor: 'gray',
     borderWidth: 1,
-    marginBottom: 10,
-    paddingHorizontal: 10,
-    borderRadius: 5,
+    marginBottom: 15,
+    paddingHorizontal: 15,
+    borderRadius: 8,
     color: 'white',
+    fontSize: 16,
+  },
+  loginButton: {
+    width: '100%',
+    height: 50,
+    backgroundColor: '#4CAF50',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: 8,
+    marginTop: 5,
+  },
+  loginButtonDisabled: {
+    backgroundColor: '#4CAF5080',
+  },
+  loginButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: 'bold',
   },
   registerButton: {
-    marginTop: 15,
+    marginTop: 20,
     paddingVertical: 10,
   }
 });

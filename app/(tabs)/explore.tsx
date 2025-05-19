@@ -1,13 +1,133 @@
 import { Image } from 'expo-image';
-import { Platform, StyleSheet, View } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { Platform, StyleSheet, View, FlatList, TouchableOpacity, ActivityIndicator, TextInput, Alert } from 'react-native';
+import { router } from 'expo-router';
 
 import { Collapsible } from '@/components/Collapsible';
 import { ExternalLink } from '@/components/ExternalLink';
 import ParallaxScrollView from '@/components/ParallaxScrollView';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
+import { TouchableFix } from '@/components/TouchableFix';
+import { IconSymbol } from '@/components/ui/IconSymbol';
+import * as artistService from '@/services/artist.service';
+import * as tattooService from '@/services/tattoo.service';
+import { Artist } from '@/types/artist';
+import { TattooDesign } from '@/types/tattooDesign';
 
 export default function ExploreScreen() {
+  const [featuredArtists, setFeaturedArtists] = useState<Artist[]>([]);
+  const [recentDesigns, setRecentDesigns] = useState<TattooDesign[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [designsLoading, setDesignsLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
+
+  useEffect(() => {
+    Promise.all([
+      fetchFeaturedArtists(),
+      fetchRecentDesigns()
+    ]).finally(() => setLoading(false));
+  }, []);
+
+  const fetchFeaturedArtists = async () => {
+    try {
+      console.log("Fetching featured artists...");
+      const artists = await artistService.getFeaturedArtists(6);
+      console.log("Received featured artists:", artists);
+      setFeaturedArtists(artists);
+    } catch (error) {
+      console.error('Error fetching featured artists:', error);
+    }
+  };
+
+  const fetchRecentDesigns = async () => {
+    setDesignsLoading(true);
+    try {
+      // Get the latest designs, sorted by creation date
+      const response = await tattooService.getAllTattooDesigns({
+        limit: 3,
+        page: 1,
+      });
+      setRecentDesigns(response.designs);
+    } catch (error) {
+      console.error('Error fetching recent designs:', error);
+    } finally {
+      setDesignsLoading(false);
+    }
+  };
+
+  const handleSearch = () => {
+    if (searchQuery.trim()) {
+      const searchPath = `/search?query=${encodeURIComponent(searchQuery.trim())}` as const;
+      router.push(searchPath as any);
+    }
+  };
+
+  const handleArtistPress = (artistId: string) => {
+    const artistPath = `/artist/${artistId}` as const;
+    router.push(artistPath as any);
+  };
+
+  const handleDesignPress = (design: TattooDesign) => {
+    // Navigate to tattoos screen instead of non-existent artist detail page
+    const tattoosPath = '/tattoos' as const;
+    router.push(tattoosPath as any);
+    
+    // Alert with design information for now
+    Alert.alert(
+      design.title,
+      `${design.description || 'No description'}\n\nStyle: ${design.style}\n${design.price ? `Price: $${design.price}` : ''}`,
+      [{ text: 'OK' }]
+    );
+  };
+
+  const renderArtistCard = ({ item }: { item: Artist }) => (
+    <TouchableFix 
+      style={styles.artistCard}
+      onPress={() => handleArtistPress(item.id)}
+    >
+      <View style={styles.artistImageContainer}>
+        {item.avatarUrl ? (
+          <Image 
+            source={{ uri: item.avatarUrl }} 
+            style={styles.artistImage}
+            contentFit="cover"
+          />
+        ) : (
+          <View style={styles.artistImagePlaceholder}>
+            <IconSymbol name="person.fill" size={40} color="#555555" />
+          </View>
+        )}
+      </View>
+      <View style={styles.artistInfo}>
+        <ThemedText style={styles.artistName}>{item.name}</ThemedText>
+        <ThemedText style={styles.artistLocation}>{item.location}</ThemedText>
+        
+        <View style={styles.artistSpecialties}>
+          {item.specialties.slice(0, 3).map((specialty, index) => (
+            <View key={index} style={styles.specialtyTag}>
+              <ThemedText style={styles.specialtyText}>{specialty}</ThemedText>
+            </View>
+          ))}
+        </View>
+        
+        <View style={styles.artistRating}>
+          {Array(5).fill(0).map((_, i) => (
+            <IconSymbol 
+              key={i} 
+              name="star.fill" 
+              size={14} 
+              color={i < (item.rating || 0) ? "#FFD700" : "#555555"} 
+            />
+          ))}
+          {item.reviewCount && (
+            <ThemedText style={styles.reviewCount}>({item.reviewCount})</ThemedText>
+          )}
+        </View>
+      </View>
+    </TouchableFix>
+  );
+
   return (
     <ParallaxScrollView
       headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
@@ -23,43 +143,147 @@ export default function ExploreScreen() {
           </ThemedText>
         </ThemedView>
       }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Explore</ThemedText>
-      </ThemedView>
-
-      <ThemedView style={styles.sectionContainer}>
-        <ThemedText type="subtitle" style={styles.sectionTitle}>Highlights</ThemedText>
-        <ThemedView style={styles.placeholderBox}>
-          <ThemedText style={styles.placeholderText}>Highlight 1</ThemedText>
-        </ThemedView>
-        <ThemedView style={styles.placeholderBox}>
-          <ThemedText style={styles.placeholderText}>Highlight 2</ThemedText>
-        </ThemedView>
-      </ThemedView>
-
-      <ThemedView style={styles.sectionContainer}>
-        <ThemedText type="subtitle" style={styles.sectionTitle}>Featured Artists</ThemedText>
-        <ThemedView style={styles.placeholderBox}>
-          <ThemedText style={styles.placeholderText}>Artist Profile 1</ThemedText>
-        </ThemedView>
-        <ThemedView style={styles.placeholderBox}>
-          <ThemedText style={styles.placeholderText}>Artist Profile 2</ThemedText>
-        </ThemedView>
-      </ThemedView>
-
-      <ThemedView style={styles.sectionContainer}>
-        <ThemedText type="subtitle" style={styles.sectionTitle}>Trending Tattoos</ThemedText>
-        <ThemedView style={styles.placeholderBox}>
-          <ThemedText style={styles.placeholderText}>Tattoo Image 1</ThemedText>
-        </ThemedView>
-        <ThemedView style={styles.placeholderBox}>
-          <ThemedText style={styles.placeholderText}>Tattoo Image 2</ThemedText>
-        </ThemedView>
-      </ThemedView>
-
       
+      <View style={styles.searchContainer}>
+        <View style={styles.searchInputContainer}>
+          <IconSymbol name="magnifyingglass" size={20} color="#999" style={styles.searchIcon} />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search artists, styles, or locations..."
+            placeholderTextColor="#999"
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            onSubmitEditing={handleSearch}
+            returnKeyType="search"
+          />
+          {searchQuery.length > 0 && (
+            <TouchableOpacity onPress={() => setSearchQuery('')} style={styles.clearButton}>
+              <IconSymbol name="xmark.circle.fill" size={20} color="#999" />
+            </TouchableOpacity>
+          )}
+        </View>
+      </View>
+      
+      <ThemedView style={styles.sectionContainer}>
+        <ThemedText type="subtitle" style={styles.sectionTitle}>Popular Categories</ThemedText>
+        <View style={styles.categoriesContainer}>
+          <TouchableFix 
+            style={styles.categoryButton}
+            onPress={() => {
+              const path = '/search?specialty=Traditional' as const;
+              router.push(path as any);
+            }}
+          >
+            <IconSymbol name="flame.fill" size={24} color="#FF6B6B" />
+            <ThemedText style={styles.categoryText}>Traditional</ThemedText>
+          </TouchableFix>
+          
+          <TouchableFix 
+            style={styles.categoryButton}
+            onPress={() => {
+              const path = '/search?specialty=Minimalist' as const;
+              router.push(path as any);
+            }}
+          >
+            <IconSymbol name="sparkles" size={24} color="#4ECDC4" />
+            <ThemedText style={styles.categoryText}>Minimalist</ThemedText>
+          </TouchableFix>
+          
+          <TouchableFix 
+            style={styles.categoryButton}
+            onPress={() => {
+              const path = '/search?specialty=Realism' as const;
+              router.push(path as any);
+            }}
+          >
+            <IconSymbol name="person.fill" size={24} color="#FFD166" />
+            <ThemedText style={styles.categoryText}>Realism</ThemedText>
+          </TouchableFix>
+          
+          <TouchableFix 
+            style={styles.categoryButton}
+            onPress={() => {
+              const path = '/search?specialty=Watercolor' as const;
+              router.push(path as any);
+            }}
+          >
+            <IconSymbol name="drop.fill" size={24} color="#6A8EAE" />
+            <ThemedText style={styles.categoryText}>Watercolor</ThemedText>
+          </TouchableFix>
+        </View>
+      </ThemedView>
+
+      <ThemedView style={styles.sectionContainer}>
+        <View style={styles.sectionHeader}>
+          <ThemedText type="subtitle" style={styles.sectionTitle}>Featured Artists</ThemedText>
+          <TouchableFix onPress={() => {
+            const path = '/artists' as const;
+            router.push(path as any);
+          }}>
+            <ThemedText style={styles.seeAllText}>See All</ThemedText>
+          </TouchableFix>
+        </View>
         
-      
+        {loading ? (
+          <ActivityIndicator size="large" color="#007AFF" style={styles.loader} />
+        ) : featuredArtists.length > 0 ? (
+          <FlatList
+            data={featuredArtists}
+            renderItem={renderArtistCard}
+            keyExtractor={item => item.id}
+            horizontal={false}
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.artistListContainer}
+          />
+        ) : (
+          <ThemedView style={styles.emptyStateContainer}>
+            <IconSymbol name="person.2.slash" size={40} color="#555555" />
+            <ThemedText style={styles.emptyStateText}>No artists found</ThemedText>
+          </ThemedView>
+        )}
+      </ThemedView>
+
+      <ThemedView style={styles.sectionContainer}>
+        <View style={styles.sectionHeader}>
+          <ThemedText type="subtitle" style={styles.sectionTitle}>New Designs</ThemedText>
+          <TouchableFix onPress={() => {
+            const path = '/tattoos' as const;
+            router.push(path as any);
+          }}>
+            <ThemedText style={styles.seeAllText}>See All</ThemedText>
+          </TouchableFix>
+        </View>
+        
+        {designsLoading ? (
+          <ActivityIndicator size="large" color="#007AFF" style={styles.loader} />
+        ) : recentDesigns.length > 0 ? (
+          <View style={styles.designsContainer}>
+            {recentDesigns.map((design) => (
+              <TouchableFix
+                key={design.id}
+                style={styles.designCard}
+                onPress={() => handleDesignPress(design)}
+              >
+                <Image 
+                  source={{ 
+                    uri: `${design.imageUrl.startsWith('http') ? '' : 'http://localhost:5000'}${design.imageUrl}` 
+                  }} 
+                  style={styles.designImage}
+                  contentFit="cover"
+                />
+                <View style={styles.designOverlay}>
+                  <ThemedText style={styles.designTitle}>{design.title}</ThemedText>
+                </View>
+              </TouchableFix>
+            ))}
+          </View>
+        ) : (
+          <ThemedView style={styles.emptyStateContainer}>
+            <IconSymbol name="photo.stack" size={40} color="#555555" />
+            <ThemedText style={styles.emptyStateText}>No designs found</ThemedText>
+          </ThemedView>
+        )}
+      </ThemedView>
     </ParallaxScrollView>
   );
 }
@@ -76,30 +300,175 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     textAlign: 'center',
   },
-  titleContainer: {
+  searchContainer: {
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 8,
+  },
+  searchInputContainer: {
     flexDirection: 'row',
-    gap: 8,
-    marginTop: 16,
+    alignItems: 'center',
+    backgroundColor: '#2A2A2A',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    height: 44,
+  },
+  searchIcon: {
+    marginRight: 8,
+  },
+  searchInput: {
+    flex: 1,
+    height: '100%',
+    color: '#FFFFFF',
+    fontSize: 16,
+  },
+  clearButton: {
+    padding: 4,
   },
   sectionContainer: {
     marginTop: 24,
     marginBottom: 16,
     paddingHorizontal: 16,
   },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
   sectionTitle: {
     marginBottom: 12,
   },
-  placeholderBox: {
-    backgroundColor: '#E0E0E0',
-    padding: 20,
+  seeAllText: {
+    color: '#007AFF',
+    fontSize: 14,
+  },
+  categoriesContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    flexWrap: 'wrap',
+  },
+  categoryButton: {
+    width: '48%',
+    backgroundColor: '#1F1F1F',
     borderRadius: 8,
+    padding: 16,
     marginBottom: 10,
     alignItems: 'center',
     justifyContent: 'center',
-    minHeight: 100,
+    minHeight: 80,
   },
-  placeholderText: {
-    color: '#333333',
+  categoryText: {
+    marginTop: 8,
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  loader: {
+    marginVertical: 20,
+  },
+  artistListContainer: {
+    paddingVertical: 8,
+  },
+  artistCard: {
+    flexDirection: 'row',
+    backgroundColor: '#1F1F1F',
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 12,
+  },
+  artistImageContainer: {
+    marginRight: 12,
+  },
+  artistImage: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+  },
+  artistImagePlaceholder: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: '#2A2A2A',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  artistInfo: {
+    flex: 1,
+    justifyContent: 'center',
+  },
+  artistName: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 4,
+  },
+  artistLocation: {
+    fontSize: 14,
+    color: '#AAAAAA',
+    marginBottom: 6,
+  },
+  artistSpecialties: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginBottom: 6,
+  },
+  specialtyTag: {
+    backgroundColor: '#333333',
+    borderRadius: 4,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    marginRight: 6,
+    marginBottom: 4,
+  },
+  specialtyText: {
+    fontSize: 12,
+    color: '#CCCCCC',
+  },
+  artistRating: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  reviewCount: {
+    marginLeft: 4,
+    fontSize: 12,
+    color: '#AAAAAA',
+  },
+  emptyStateContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 30,
+  },
+  emptyStateText: {
+    marginTop: 10,
+    color: '#777777',
+  },
+  designsContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+  },
+  designCard: {
+    width: '100%',
+    height: 160,
+    borderRadius: 8,
+    overflow: 'hidden',
+    marginBottom: 12,
+    position: 'relative',
+  },
+  designImage: {
+    width: '100%',
+    height: '100%',
+  },
+  designOverlay: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    padding: 10,
+  },
+  designTitle: {
+    color: 'white',
     fontSize: 16,
+    fontWeight: 'bold',
   },
 });

@@ -1,23 +1,28 @@
 import React, { useEffect } from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { ActivityIndicator, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
+import { ThemedView } from '@/components/ThemedView';
+import { ThemedText } from '@/components/ThemedText';
+import { useAuth } from '@/contexts/AuthContext';
 
 export default function StartupScreen() {
   const router = useRouter();
+  const { isAuthenticated, loading } = useAuth();
 
   useEffect(() => {
-    // Navigate to login after a short delay
-    const timer = setTimeout(() => {
-      router.replace('/login');
-    }, 2000); // 2 seconds delay
-
-    return () => clearTimeout(timer); // Cleanup timer on unmount
-  }, [router]);
+    // Only navigate after authentication state is determined
+    if (!loading) {
+      const destination = isAuthenticated ? '/(tabs)/explore' : '/login';
+      router.replace(destination);
+    }
+  }, [isAuthenticated, loading, router]);
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>TATU</Text>
-    </View>
+    <ThemedView style={styles.container}>
+      <ThemedText style={styles.title}>TATU</ThemedText>
+      <ThemedText style={styles.subtitle}>Find, Preview and Book the Best Tattoo Artists</ThemedText>
+      <ActivityIndicator size="large" color="#FFF" style={styles.loader} />
+    </ThemedView>
   );
 }
 
@@ -26,10 +31,19 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#fff',
+    padding: 20,
   },
   title: {
     fontSize: 48,
     fontWeight: 'bold',
+    marginBottom: 10,
+  },
+  subtitle: {
+    fontSize: 16,
+    textAlign: 'center',
+    marginBottom: 30,
+  },
+  loader: {
+    marginTop: 20,
   },
 });

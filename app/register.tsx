@@ -1,15 +1,19 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TextInput, Button, Alert, TouchableOpacity } from 'react-native';
+import { View, StyleSheet, TextInput, Alert, ActivityIndicator } from 'react-native';
 import { Link, useRouter } from 'expo-router';
-import { ThemedText } from '@/components/ThemedText'; // Added import for ThemedText
-import { ThemedView } from '@/components/ThemedView'; // Added import for ThemedView
+import { ThemedText } from '@/components/ThemedText';
+import { ThemedView } from '@/components/ThemedView';
+import { TouchableFix } from '@/components/TouchableFix';
+import { useAuth } from '@/contexts/AuthContext';
 
 export default function RegisterScreen() {
   const router = useRouter();
+  const { register } = useAuth();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [selectedRole, setSelectedRole] = useState('USER'); // Renamed state for clarity, still 'USER' | 'ARTIST'
+  const [selectedRole, setSelectedRole] = useState('USER');
+  const [loading, setLoading] = useState(false);
 
   const handleRegister = async () => {
     if (!name || !email || !password) {
@@ -17,59 +21,51 @@ export default function RegisterScreen() {
       return;
     }
 
+    setLoading(true);
     try {
-      const apiUrl = process.env.EXPO_PUBLIC_API_BASE_URL;
-      if (!apiUrl) {
-        Alert.alert('Error', 'API URL is not configured. Please check your .env.local file.');
-        return;
-      }
-      const isArtist = selectedRole === 'ARTIST'; // Determine isArtist based on selectedRole
+      const isArtist = selectedRole === 'ARTIST';
+      
+      // Log the data being sent to the API
+      const userData = {
+        name,
+        email,
+        password,
+        isArtist,
+      };
+      console.log('Sending registration data:', JSON.stringify(userData));
 
-      const response = await fetch(`${apiUrl}/api/auth/register`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          name,
-          email,
-          password,
-          isArtist, // Send isArtist boolean instead of role string
-        }),
-      });
+      await register(userData);
 
-      const data = await response.json();
-
-      if (response.ok) {
-        Alert.alert('Success', 'Registration successful! Please login.');
-        router.replace('/login');
-      } else {
-        Alert.alert('Registration Failed', data.message || 'Something went wrong');
-      }
+      Alert.alert('Success', 'Registration successful!');
+      router.replace('/(tabs)/explore');
     } catch (error) {
       console.error('Registration error:', error);
-      Alert.alert('Registration Error', 'An error occurred during registration.');
+      Alert.alert('Registration Failed', error instanceof Error ? error.message : 'Something went wrong');
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
     <ThemedView style={styles.container}>
       <ThemedText type="title" style={styles.title}>Register</ThemedText>
-      {/* Role Selection UI */}
+      
       <ThemedText style={styles.roleSelectionTitle}>I want to register as a:</ThemedText>
       <View style={styles.roleSelectionContainer}>
-        <TouchableOpacity
+        <TouchableFix
           style={[styles.roleButton, selectedRole === 'USER' && styles.roleButtonSelected]}
           onPress={() => setSelectedRole('USER')}
+          disabled={loading}
         >
           <ThemedText style={[styles.roleButtonText, selectedRole === 'USER' && styles.roleButtonTextSelected]}>User</ThemedText>
-        </TouchableOpacity>
-        <TouchableOpacity
+        </TouchableFix>
+        <TouchableFix
           style={[styles.roleButton, selectedRole === 'ARTIST' && styles.roleButtonSelected]}
           onPress={() => setSelectedRole('ARTIST')}
+          disabled={loading}
         >
           <ThemedText style={[styles.roleButtonText, selectedRole === 'ARTIST' && styles.roleButtonTextSelected]}>Artist</ThemedText>
-        </TouchableOpacity>
+        </TouchableFix>
       </View>
 
       <TextInput
@@ -78,6 +74,7 @@ export default function RegisterScreen() {
         value={name}
         onChangeText={setName}
         autoCapitalize="words"
+        editable={!loading}
       />
       <TextInput
         style={styles.input}
@@ -86,6 +83,7 @@ export default function RegisterScreen() {
         onChangeText={setEmail}
         keyboardType="email-address"
         autoCapitalize="none"
+        editable={!loading}
       />
       <TextInput
         style={styles.input}
@@ -93,12 +91,25 @@ export default function RegisterScreen() {
         value={password}
         onChangeText={setPassword}
         secureTextEntry
+        editable={!loading}
       />
-      <Button title="Register" onPress={handleRegister} />
+      
+      <TouchableFix 
+        style={[styles.registerButton, loading && styles.registerButtonDisabled]} 
+        onPress={handleRegister}
+        disabled={loading}
+      >
+        {loading ? (
+          <ActivityIndicator color="#FFFFFF" size="small" />
+        ) : (
+          <ThemedText style={styles.registerButtonText}>Register</ThemedText>
+        )}
+      </TouchableFix>
+      
       <Link href="/login" asChild>
-        <TouchableOpacity style={styles.loginLinkContainer}>
+        <TouchableFix style={styles.loginLinkContainer} disabled={loading}>
           <ThemedText type="link">Already have an account? Login</ThemedText>
-        </TouchableOpacity>
+        </TouchableFix>
       </Link>
     </ThemedView>
   );
@@ -112,48 +123,67 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   title: {
+    fontSize: 24,
+    fontWeight: 'bold',
     marginBottom: 20,
   },
-  roleSelectionTitle: { // Style for the role selection title
+  roleSelectionTitle: {
     marginBottom: 10,
     fontSize: 16,
-    // Consider theming this color if needed
   },
-  roleSelectionContainer: { // Style for the role buttons container
+  roleSelectionContainer: {
     flexDirection: 'row',
     justifyContent: 'space-around',
     width: '100%',
     marginBottom: 20,
   },
-  roleButton: { // Style for individual role button
+  roleButton: {
     paddingVertical: 10,
     paddingHorizontal: 20,
     borderWidth: 1,
     borderColor: 'gray',
     borderRadius: 5,
   },
-  roleButtonSelected: { // Style for selected role button
-    backgroundColor: '#007AFF', // Example selected color, adjust as needed
+  roleButtonSelected: {
+    backgroundColor: '#007AFF',
     borderColor: '#007AFF',
   },
-  roleButtonText: { // Style for role button text
+  roleButtonText: {
     color: 'gray',
   },
-  roleButtonTextSelected: { // Style for selected role button text
+  roleButtonTextSelected: {
     color: 'white',
   },
   input: {
     width: '100%',
-    height: 40,
+    height: 50,
     borderColor: 'gray',
     borderWidth: 1,
-    marginBottom: 12,
-    paddingHorizontal: 10,
-    borderRadius: 5,
+    marginBottom: 15,
+    paddingHorizontal: 15,
+    borderRadius: 8,
     color: 'white',
+    fontSize: 16,
+  },
+  registerButton: {
+    width: '100%',
+    height: 50,
+    backgroundColor: '#4CAF50',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: 8,
+    marginTop: 5,
+  },
+  registerButtonDisabled: {
+    backgroundColor: '#4CAF5080',
+  },
+  registerButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: 'bold',
   },
   loginLinkContainer: {
-    marginTop: 15,
+    marginTop: 20,
     paddingVertical: 10,
   }
 });
