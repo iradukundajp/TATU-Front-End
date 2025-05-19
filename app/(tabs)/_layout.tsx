@@ -4,22 +4,18 @@ import React from 'react';
 
 import { useColorScheme } from '@/hooks/useColorScheme';
 import { useAuth } from '@/contexts/AuthContext';
-// import { HamburgerMenu } from '@/components/HamburgerMenu'; // Removed for now
+import { HamburgerMenu } from '@/components/HamburgerMenu'; // Re-added HamburgerMenu
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();
   const { isAuthenticated, isArtist } = useAuth();
 
   return (
-    // <View style={styles.container}> // Removed View wrapper
-      /* Hamburger menu for navigation */
-      // <HamburgerMenu /> // Removed HamburgerMenu
-      
-      /* Tabs navigator */ // Changed comment
-      <Tabs // Changed from Stack
+    <>
+      <HamburgerMenu /> 
+      <Tabs 
         screenOptions={{
-          headerShown: true, // Default for Tabs, can be configured per screen
-          // Add other tab-specific screenOptions here if needed
+          headerShown: true, 
           // e.g., tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
         }}
       >
@@ -31,7 +27,7 @@ export default function TabLayout() {
         <Tabs.Screen name="profile" />
         <Tabs.Screen name="messages" />
       </Tabs>
-    // </View> // Removed View wrapper
+    </>
   );
 }
 
