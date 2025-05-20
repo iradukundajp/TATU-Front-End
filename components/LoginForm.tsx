@@ -5,26 +5,15 @@ import {
   TextInput,
   TouchableOpacity,
   ActivityIndicator,
+  StatusBar,
+  SafeAreaView,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Link } from 'expo-router';
-import { loginStyles as styles } from '@/styles/loginStyles';
-import useLogin from '@/hooks/useLogin';
+import { Ionicons } from '@expo/vector-icons';
+import { useLogin } from '@/hooks/useLogin';
+import { loginStyles } from '@/styles/loginStyles';
 
-interface Props {
-  emailFocused: boolean;
-  setEmailFocused: (focus: boolean) => void;
-  passwordFocused: boolean;
-  setPasswordFocused: (focus: boolean) => void;
-}
-
-const LoginForm: React.FC<Props> = ({
-  emailFocused,
-  setEmailFocused,
-  passwordFocused,
-  setPasswordFocused,
-}) => {
+export default function LoginScreen() {
   const {
     email,
     setEmail,
@@ -32,97 +21,143 @@ const LoginForm: React.FC<Props> = ({
     setPassword,
     loading,
     showPassword,
-    setShowPassword,
+    emailFocused,
+    passwordFocused,
     handleLogin,
+    togglePasswordVisibility,
+    handleEmailFocus,
+    handleEmailBlur,
+    handlePasswordFocus,
+    handlePasswordBlur,
+    navigateToRegister
   } = useLogin();
 
   return (
-    <View style={styles.formContainer}>
-      {/* Email */}
-      <View style={[
-        styles.inputContainer,
-        emailFocused && styles.inputFocused,
-        emailFocused && { transform: [{ scale: 1.02 }] },
-      ]}>
-        <Ionicons name="mail-outline" size={20} color={emailFocused ? '#3b82f6' : '#6b7280'} />
-        <TextInput
-          style={styles.textInput}
-          placeholder="Email address"
-          placeholderTextColor="#6b7280"
-          value={email}
-          onChangeText={setEmail}
-          keyboardType="email-address"
-          autoCapitalize="none"
-          editable={!loading}
-          onFocus={() => setEmailFocused(true)}
-          onBlur={() => setEmailFocused(false)}
-        />
-      </View>
-
-      {/* Password */}
-      <View style={[
-        styles.inputContainer,
-        passwordFocused && styles.inputFocused,
-        passwordFocused && { transform: [{ scale: 1.02 }] },
-      ]}>
-        <Ionicons name="lock-closed-outline" size={20} color={passwordFocused ? '#3b82f6' : '#6b7280'} />
-        <TextInput
-          style={styles.textInput}
-          placeholder="Password"
-          placeholderTextColor="#6b7280"
-          value={password}
-          onChangeText={setPassword}
-          secureTextEntry={!showPassword}
-          editable={!loading}
-          onFocus={() => setPasswordFocused(true)}
-          onBlur={() => setPasswordFocused(false)}
-        />
-        <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={styles.eyeIcon}>
-          <Ionicons name={showPassword ? 'eye-off-outline' : 'eye-outline'} size={20} color="#6b7280" />
-        </TouchableOpacity>
-      </View>
-
-      <TouchableOpacity style={styles.forgotPassword}>
-        <Text style={styles.forgotPasswordText}>Forgot password?</Text>
-      </TouchableOpacity>
-
-      {/* Login */}
-      <TouchableOpacity
-        style={[styles.loginButton, loading && styles.loginButtonDisabled]}
-        onPress={handleLogin}
-        disabled={loading}
-        activeOpacity={0.8}
-      >
+    <SafeAreaView style={loginStyles.container}>
+      <StatusBar barStyle="light-content" />
+      <View style={loginStyles.backgroundContainer}>
         <LinearGradient
-          colors={loading ? ['#6b7280', '#6b7280'] : ['#3b82f6', '#1d4ed8']}
-          style={styles.buttonGradient}
+          colors={['#1a1a2e', '#16213e', '#0f3460']}
+          style={loginStyles.gradient}
         >
-          {loading ? (
-            <View style={styles.loadingContainer}>
-              <ActivityIndicator color="#FFFFFF" size="small" />
-              <Text style={styles.loadingText}>Signing in...</Text>
+          {/* Header Section */}
+          <View style={loginStyles.header}>
+            <Text style={loginStyles.logo}>TATU</Text>
+            <Text style={loginStyles.subtitle}>Welcome back!</Text>
+            <Text style={loginStyles.description}>
+              Sign in to discover amazing tattoo artists
+            </Text>
+          </View>
+
+          {/* Form Container */}
+          <View style={loginStyles.formContainer}>
+            {/* Email Input */}
+            <View style={[
+              loginStyles.inputContainer,
+              emailFocused && loginStyles.inputFocused
+            ]}>
+              <Ionicons 
+                name="mail-outline" 
+                size={20} 
+                color={emailFocused ? '#3b82f6' : '#6b7280'} 
+              />
+              <TextInput
+                style={loginStyles.textInput}
+                placeholder="Email address"
+                placeholderTextColor="#6b7280"
+                value={email}
+                onChangeText={setEmail}
+                keyboardType="email-address"
+                autoCapitalize="none"
+                editable={!loading}
+                onFocus={handleEmailFocus}
+                onBlur={handleEmailBlur}
+              />
             </View>
-          ) : (
-            <Text style={styles.loginButtonText}>Sign In</Text>
-          )}
+
+            {/* Password Input */}
+            <View style={[
+              loginStyles.inputContainer,
+              passwordFocused && loginStyles.inputFocused
+            ]}>
+              <Ionicons 
+                name="lock-closed-outline" 
+                size={20} 
+                color={passwordFocused ? '#3b82f6' : '#6b7280'} 
+              />
+              <TextInput
+                style={loginStyles.textInput}
+                placeholder="Password"
+                placeholderTextColor="#6b7280"
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry={!showPassword}
+                editable={!loading}
+                onFocus={handlePasswordFocus}
+                onBlur={handlePasswordBlur}
+              />
+              <TouchableOpacity
+                onPress={togglePasswordVisibility}
+                style={loginStyles.eyeIcon}
+              >
+                <Ionicons 
+                  name={showPassword ? "eye-off-outline" : "eye-outline"} 
+                  size={20} 
+                  color="#6b7280" 
+                />
+              </TouchableOpacity>
+            </View>
+
+            {/* Forgot Password */}
+            <TouchableOpacity style={loginStyles.forgotPassword}>
+              <Text style={loginStyles.forgotPasswordText}>Forgot password?</Text>
+            </TouchableOpacity>
+
+            {/* Login Button */}
+            <TouchableOpacity
+              style={[loginStyles.loginButton, loading && loginStyles.loginButtonDisabled]}
+              onPress={handleLogin}
+              disabled={loading}
+            >
+              <View style={loginStyles.buttonContent}>
+                {loading ? (
+                  <View style={loginStyles.loadingContainer}>
+                    <ActivityIndicator color="#FFFFFF" size="small" />
+                    <Text style={loginStyles.loadingText}>Signing in...</Text>
+                  </View>
+                ) : (
+                  <Text style={loginStyles.loginButtonText}>Sign In</Text>
+                )}
+              </View>
+            </TouchableOpacity>
+
+            {/* Divider */}
+            <View style={loginStyles.divider}>
+              <View style={loginStyles.dividerLine} />
+              <Text style={loginStyles.dividerText}>or</Text>
+              <View style={loginStyles.dividerLine} />
+            </View>
+
+            {/* Register Link */}
+            <TouchableOpacity 
+              style={loginStyles.registerButton} 
+              disabled={loading}
+              onPress={navigateToRegister}
+            >
+              <Text style={loginStyles.registerButtonText}>
+                Don't have an account? <Text style={loginStyles.registerLinkText}>Sign up</Text>
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Footer */}
+          <View style={loginStyles.footer}>
+            <Text style={loginStyles.footerText}>
+              By signing in, you agree to our Terms of Service and Privacy Policy
+            </Text>
+          </View>
         </LinearGradient>
-      </TouchableOpacity>
-
-      <View style={styles.divider}>
-        <View style={styles.dividerLine} />
-        <Text style={styles.dividerText}>or</Text>
-        <View style={styles.dividerLine} />
       </View>
-
-      <Link href="/register" asChild>
-        <TouchableOpacity style={styles.registerButton} disabled={loading}>
-          <Text style={styles.registerButtonText}>
-            Don't have an account? <Text style={styles.registerLinkText}>Sign up</Text>
-          </Text>
-        </TouchableOpacity>
-      </Link>
-    </View>
+    </SafeAreaView>
   );
-};
-
-export default LoginForm;
+}

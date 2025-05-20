@@ -1,6 +1,6 @@
 import { StyleSheet, Dimensions, Platform } from 'react-native';
 
-const { height } = Dimensions.get('window');
+const { width, height } = Dimensions.get('window');
 
 export const registerStyles = StyleSheet.create({
   container: {
@@ -11,14 +11,13 @@ export const registerStyles = StyleSheet.create({
     flex: 1,
   },
   scrollContainer: {
-    flexGrow: 1,
     paddingHorizontal: 24,
     paddingBottom: 40,
   },
   header: {
     alignItems: 'center',
-    paddingTop: height * 0.08,
-    marginBottom: 30,
+    paddingTop: height * 0.07,
+    marginBottom: 20,
   },
   logo: {
     fontSize: 48,
@@ -26,7 +25,7 @@ export const registerStyles = StyleSheet.create({
     color: '#ffffff',
     letterSpacing: 6,
     marginBottom: 12,
-    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
+    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'sans-serif',
   },
   subtitle: {
     fontSize: 24,
@@ -45,7 +44,7 @@ export const registerStyles = StyleSheet.create({
     marginTop: 20,
   },
   roleSection: {
-    marginBottom: 30,
+    marginBottom: 25,
   },
   roleSectionTitle: {
     color: '#e5e7eb',
@@ -55,7 +54,8 @@ export const registerStyles = StyleSheet.create({
   },
   roleButtons: {
     flexDirection: 'row',
-    gap: 12,
+    justifyContent: 'space-between',
+    gap: 10,
   },
   roleButton: {
     flex: 1,
@@ -63,8 +63,8 @@ export const registerStyles = StyleSheet.create({
     borderWidth: 2,
     borderColor: 'rgba(255, 255, 255, 0.2)',
     backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    paddingVertical: 16,
-    paddingHorizontal: 12,
+    paddingVertical: 14,
+    paddingHorizontal: 10,
   },
   roleButtonSelectedUser: {
     borderColor: '#3b82f6',
@@ -89,38 +89,42 @@ export const registerStyles = StyleSheet.create({
     color: '#ffffff',
     fontWeight: '600',
   },
-  inputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  basicInput: {
+    marginBottom: 20,
+  },
+  inputLabel: {
+    color: '#e5e7eb',
+    fontSize: 14,
+    marginBottom: 8,
+    fontWeight: '500',
+  },
+  simpleInput: {
     backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    borderRadius: 20,
+    borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 14,
-    marginBottom: 20,
-    borderWidth: 2,
-    borderColor: 'transparent',
-  },
-  inputFocused: {
-    borderColor: '#3b82f6',
-    backgroundColor: 'rgba(59, 130, 246, 0.15)',
-    shadowColor: '#3b82f6',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.3,
-    shadowRadius: 10,
-    elevation: 5,
-  },
-  textInput: {
-    flex: 1,
-    marginLeft: 12,
-    fontSize: 16,
     color: '#ffffff',
-    paddingVertical: 4,
+    fontSize: 16,
   },
-  eyeIcon: {
-    padding: 4,
+  passwordInputWrapper: {
+    flexDirection: 'row',
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  passwordInput: {
+    flex: 1,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    color: '#ffffff',
+    fontSize: 16,
+  },
+  eyeButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 14,
   },
   termsContainer: {
-    marginBottom: 30,
+    marginBottom: 25,
   },
   termsText: {
     color: '#9ca3af',
@@ -133,24 +137,18 @@ export const registerStyles = StyleSheet.create({
     textDecorationLine: 'underline',
   },
   registerButton: {
-    borderRadius: 20,
-    overflow: 'hidden',
-    marginBottom: 30,
-    elevation: 3,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
+    borderRadius: 12,
+    backgroundColor: '#3b82f6',
+    marginBottom: 25,
   },
   registerButtonDisabled: {
     opacity: 0.6,
+    backgroundColor: '#6b7280',
   },
-  buttonGradient: {
-    paddingVertical: 18,
-    paddingHorizontal: 24,
+  buttonContent: {
+    paddingVertical: 16,
     alignItems: 'center',
     justifyContent: 'center',
-    minHeight: 56,
   },
   registerButtonText: {
     color: '#ffffff',
@@ -170,7 +168,7 @@ export const registerStyles = StyleSheet.create({
   divider: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginVertical: 30,
+    marginVertical: 20,
   },
   dividerLine: {
     flex: 1,
@@ -196,7 +194,7 @@ export const registerStyles = StyleSheet.create({
     fontWeight: '600',
   },
   benefitsSection: {
-    marginTop: 40,
+    marginTop: 30,
     alignItems: 'center',
   },
   benefitsTitle: {
