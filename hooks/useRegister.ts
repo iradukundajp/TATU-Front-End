@@ -46,7 +46,21 @@ export const useRegister = () => {
       router.replace('/(tabs)/explore');
     } catch (error) {
       console.error('Registration error:', error);
-      Alert.alert('Registration Failed', error instanceof Error ? error.message : 'Something went wrong');
+      
+      // More user-friendly error message
+      let errorMessage = 'Something went wrong';
+      if (error instanceof Error) {
+        if (error.message.includes('Network request failed')) {
+          errorMessage = 'Connection to server failed. Please check:\n\n' + 
+                         '• Your backend server is running\n' +
+                         '• Your phone and computer are on the same WiFi network\n' +
+                         '• Server connection settings are configured correctly';
+        } else {
+          errorMessage = error.message;
+        }
+      }
+      
+      Alert.alert('Registration Failed', errorMessage);
     } finally {
       setLoading(false);
     }
