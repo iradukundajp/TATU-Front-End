@@ -5,7 +5,8 @@ import React from 'react';
 
 import { useColorScheme } from '@/hooks/useColorScheme';
 import { useAuth } from '@/contexts/AuthContext';
-// import { HamburgerMenu } from '@/components/HamburgerMenu'; // Temporarily commented out
+import { HamburgerMenu } from '@/components/HamburgerMenu'; // Ensure HamburgerMenu is imported
+import { Colors } from '@/constants/Colors'; // Import Colors for tint
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();
@@ -17,12 +18,12 @@ export default function TabLayout() {
 
   return (
     // <View style={[styles.container, { paddingBottom: insets.bottom }]}> // View wrapper removed
-      // {/* <HamburgerMenu /> */} // Temporarily commented out
       
       <Tabs // Changed from Stack
         screenOptions={{
-          // headerShown: false, // Default for Tabs is usually true, adjust as needed
-          // Example: tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
+          headerShown: true, // Ensure header is shown to display the hamburger menu
+          tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
+          headerLeft: () => <HamburgerMenu />, // Add HamburgerMenu to the left of the header
         }}
       >
         <Tabs.Screen name="explore" />
