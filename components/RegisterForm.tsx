@@ -5,30 +5,14 @@ import {
   TextInput,
   TouchableOpacity,
   ActivityIndicator,
+  ScrollView,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Link } from 'expo-router';
-import { registerStyles as styles } from '@/styles/registerStyles';
-import useRegister from '@/hooks/useRegister';
+import { Ionicons } from '@expo/vector-icons';
+import { useRegister } from '@/hooks/useRegister';
+import { registerStyles } from '@/styles/registerStyles';
 
-interface Props {
-  nameFocused: boolean;
-  setNameFocused: (focus: boolean) => void;
-  emailFocused: boolean;
-  setEmailFocused: (focus: boolean) => void;
-  passwordFocused: boolean;
-  setPasswordFocused: (focus: boolean) => void;
-}
-
-const RegisterForm: React.FC<Props> = ({
-  nameFocused,
-  setNameFocused,
-  emailFocused,
-  setEmailFocused,
-  passwordFocused,
-  setPasswordFocused,
-}) => {
+export default function RegisterForm() {
   const {
     name,
     setName,
@@ -40,240 +24,196 @@ const RegisterForm: React.FC<Props> = ({
     setSelectedRole,
     loading,
     showPassword,
-    setShowPassword,
     handleRegister,
+    togglePasswordVisibility,
+    navigateToLogin
   } = useRegister();
 
   return (
-    <View style={styles.formContainer}>
-      {/* Role Selection */}
-      <View style={styles.roleSection}>
-        <Text style={styles.roleSectionTitle}>I want to register as:</Text>
-        <View style={styles.roleButtons}>
-          <TouchableOpacity
-            style={[
-              styles.roleButton,
-              selectedRole === 'USER' && styles.roleButtonSelectedUser,
-            ]}
-            onPress={() => setSelectedRole('USER')}
-            disabled={loading}
-            activeOpacity={0.8}
-          >
-            <View style={styles.roleButtonContent}>
-              <Ionicons
-                name="person-outline"
-                size={20}
-                color={selectedRole === 'USER' ? '#ffffff' : '#9ca3af'}
-              />
-              <Text
-                style={[
-                  styles.roleButtonText,
-                  selectedRole === 'USER' && styles.roleButtonTextSelected,
-                ]}
-              >
-                User
-              </Text>
-            </View>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[
-              styles.roleButton,
-              selectedRole === 'ARTIST' && styles.roleButtonSelectedArtist,
-            ]}
-            onPress={() => setSelectedRole('ARTIST')}
-            disabled={loading}
-            activeOpacity={0.8}
-          >
-            <View style={styles.roleButtonContent}>
-              <Ionicons
-                name="brush-outline"
-                size={20}
-                color={selectedRole === 'ARTIST' ? '#ffffff' : '#9ca3af'}
-              />
-              <Text
-                style={[
-                  styles.roleButtonText,
-                  selectedRole === 'ARTIST' && styles.roleButtonTextSelected,
-                ]}
-              >
-                Artist
-              </Text>
-            </View>
-          </TouchableOpacity>
-        </View>
-      </View>
-
-      {/* Name Input */}
-      <View
-        style={[
-          styles.inputContainer,
-          nameFocused && styles.inputFocused,
-          nameFocused && { transform: [{ scale: 1.02 }] },
-        ]}
+    <LinearGradient
+      colors={['#1a1a2e', '#16213e', '#0f3460']}
+      style={registerStyles.gradient}
+    >
+      <ScrollView 
+        contentContainerStyle={registerStyles.scrollContainer}
+        keyboardShouldPersistTaps="always"
+        bounces={false}
       >
-        <Ionicons
-          name="person-outline"
-          size={20}
-          color={nameFocused ? '#3b82f6' : '#6b7280'}
-        />
-        <TextInput
-          style={styles.textInput}
-          placeholder="Full name"
-          placeholderTextColor="#6b7280"
-          value={name}
-          onChangeText={setName}
-          autoCapitalize="words"
-          editable={!loading}
-          onFocus={() => setNameFocused(true)}
-          onBlur={() => setNameFocused(false)}
-        />
-      </View>
-
-      {/* Email Input */}
-      <View
-        style={[
-          styles.inputContainer,
-          emailFocused && styles.inputFocused,
-          emailFocused && { transform: [{ scale: 1.02 }] },
-        ]}
-      >
-        <Ionicons
-          name="mail-outline"
-          size={20}
-          color={emailFocused ? '#3b82f6' : '#6b7280'}
-        />
-        <TextInput
-          style={styles.textInput}
-          placeholder="Email address"
-          placeholderTextColor="#6b7280"
-          value={email}
-          onChangeText={setEmail}
-          keyboardType="email-address"
-          autoCapitalize="none"
-          editable={!loading}
-          onFocus={() => setEmailFocused(true)}
-          onBlur={() => setEmailFocused(false)}
-        />
-      </View>
-
-      {/* Password Input */}
-      <View
-        style={[
-          styles.inputContainer,
-          passwordFocused && styles.inputFocused,
-          passwordFocused && { transform: [{ scale: 1.02 }] },
-        ]}
-      >
-        <Ionicons
-          name="lock-closed-outline"
-          size={20}
-          color={passwordFocused ? '#3b82f6' : '#6b7280'}
-        />
-        <TextInput
-          style={styles.textInput}
-          placeholder="Password"
-          placeholderTextColor="#6b7280"
-          value={password}
-          onChangeText={setPassword}
-          secureTextEntry={!showPassword}
-          editable={!loading}
-          onFocus={() => setPasswordFocused(true)}
-          onBlur={() => setPasswordFocused(false)}
-        />
-        <TouchableOpacity
-          onPress={() => setShowPassword(!showPassword)}
-          style={styles.eyeIcon}
-        >
-          <Ionicons
-            name={showPassword ? 'eye-off-outline' : 'eye-outline'}
-            size={20}
-            color="#6b7280"
-          />
-        </TouchableOpacity>
-      </View>
-
-      {/* Terms and Conditions */}
-      <View style={styles.termsContainer}>
-        <Text style={styles.termsText}>
-          By creating an account, you agree to our{' '}
-          <Text style={styles.termsLink}>Terms of Service</Text> and{' '}
-          <Text style={styles.termsLink}>Privacy Policy</Text>
-        </Text>
-      </View>
-
-      {/* Register Button */}
-      <TouchableOpacity
-        style={[
-          styles.registerButton,
-          loading && styles.registerButtonDisabled,
-        ]}
-        onPress={handleRegister}
-        disabled={loading}
-        activeOpacity={0.8}
-      >
-        <LinearGradient
-          colors={
-            loading
-              ? ['#6b7280', '#6b7280']
-              : selectedRole === 'ARTIST'
-              ? ['#8b5cf6', '#7c3aed']
-              : ['#3b82f6', '#1d4ed8']
-          }
-          style={styles.buttonGradient}
-        >
-          {loading ? (
-            <View style={styles.loadingContainer}>
-              <ActivityIndicator color="#FFFFFF" size="small" />
-              <Text style={styles.loadingText}>Creating account...</Text>
-            </View>
-          ) : (
-            <Text style={styles.registerButtonText}>
-              Create {selectedRole === 'ARTIST' ? 'Artist' : 'User'} Account
-            </Text>
-          )}
-        </LinearGradient>
-      </TouchableOpacity>
-
-      {/* Divider */}
-      <View style={styles.divider}>
-        <View style={styles.dividerLine} />
-        <Text style={styles.dividerText}>or</Text>
-        <View style={styles.dividerLine} />
-      </View>
-
-      {/* Login Link */}
-      <Link href="/login" asChild>
-        <TouchableOpacity style={styles.loginButton} disabled={loading}>
-          <Text style={styles.loginButtonText}>
-            Already have an account?{' '}
-            <Text style={styles.loginLinkText}>Sign in</Text>
+        {/* Header Section */}
+        <View style={registerStyles.header}>
+          <Text style={registerStyles.logo}>TATU</Text>
+          <Text style={registerStyles.subtitle}>Join the community</Text>
+          <Text style={registerStyles.description}>
+            Create your account and start your tattoo journey
           </Text>
-        </TouchableOpacity>
-      </Link>
+        </View>
 
-      {/* Benefits Section */}
-      <View style={styles.benefitsSection}>
-        <Text style={styles.benefitsTitle}>
-          Join thousands of tattoo enthusiasts
-        </Text>
-        <View style={styles.statsContainer}>
-          <View style={styles.statItem}>
-            <Text style={styles.statNumber}>10K+</Text>
-            <Text style={styles.statLabel}>Artists</Text>
+        {/* Form Container */}
+        <View style={registerStyles.formContainer}>
+          {/* Role Selection */}
+          <View style={registerStyles.roleSection}>
+            <Text style={registerStyles.roleSectionTitle}>I want to register as:</Text>
+            <View style={registerStyles.roleButtons}>
+              <TouchableOpacity
+                style={[
+                  registerStyles.roleButton,
+                  selectedRole === 'USER' && registerStyles.roleButtonSelectedUser
+                ]}
+                onPress={() => setSelectedRole('USER')}
+              >
+                <View style={registerStyles.roleButtonContent}>
+                  <Ionicons 
+                    name="person-outline" 
+                    size={20} 
+                    color={selectedRole === 'USER' ? '#ffffff' : '#9ca3af'} 
+                  />
+                  <Text style={[
+                    registerStyles.roleButtonText,
+                    selectedRole === 'USER' && registerStyles.roleButtonTextSelected
+                  ]}>User</Text>
+                </View>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
+                  registerStyles.roleButton,
+                  selectedRole === 'ARTIST' && registerStyles.roleButtonSelectedArtist
+                ]}
+                onPress={() => setSelectedRole('ARTIST')}
+              >
+                <View style={registerStyles.roleButtonContent}>
+                  <Ionicons 
+                    name="brush-outline" 
+                    size={20} 
+                    color={selectedRole === 'ARTIST' ? '#ffffff' : '#9ca3af'} 
+                  />
+                  <Text style={[
+                    registerStyles.roleButtonText,
+                    selectedRole === 'ARTIST' && registerStyles.roleButtonTextSelected
+                  ]}>Artist</Text>
+                </View>
+              </TouchableOpacity>
+            </View>
           </View>
-          <View style={styles.statItem}>
-            <Text style={[styles.statNumber, { color: '#8b5cf6' }]}>50K+</Text>
-            <Text style={styles.statLabel}>Users</Text>
+
+          {/* Simple Form Inputs */}
+          <View style={registerStyles.basicInput}>
+            <Text style={registerStyles.inputLabel}>Full Name</Text>
+            <TextInput
+              style={registerStyles.simpleInput}
+              placeholder="Enter your full name"
+              placeholderTextColor="#6b7280"
+              value={name}
+              onChangeText={setName}
+              autoCapitalize="words"
+            />
           </View>
-          <View style={styles.statItem}>
-            <Text style={[styles.statNumber, { color: '#10b981' }]}>100K+</Text>
-            <Text style={styles.statLabel}>Bookings</Text>
+
+          <View style={registerStyles.basicInput}>
+            <Text style={registerStyles.inputLabel}>Email</Text>
+            <TextInput
+              style={registerStyles.simpleInput}
+              placeholder="Enter your email address"
+              placeholderTextColor="#6b7280"
+              value={email}
+              onChangeText={setEmail}
+              keyboardType="email-address"
+              autoCapitalize="none"
+            />
+          </View>
+
+          <View style={registerStyles.basicInput}>
+            <Text style={registerStyles.inputLabel}>Password</Text>
+            <View style={registerStyles.passwordInputWrapper}>
+              <TextInput
+                style={registerStyles.passwordInput}
+                placeholder="Create a password"
+                placeholderTextColor="#6b7280"
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry={!showPassword}
+                autoCapitalize="none"
+              />
+              <TouchableOpacity
+                onPress={togglePasswordVisibility}
+                style={registerStyles.eyeButton}
+              >
+                <Ionicons 
+                  name={showPassword ? "eye-off-outline" : "eye-outline"} 
+                  size={20} 
+                  color="#6b7280" 
+                />
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          {/* Terms and Conditions */}
+          <View style={registerStyles.termsContainer}>
+            <Text style={registerStyles.termsText}>
+              By creating an account, you agree to our{' '}
+              <Text style={registerStyles.termsLink}>Terms of Service</Text>{' '}
+              and{' '}
+              <Text style={registerStyles.termsLink}>Privacy Policy</Text>
+            </Text>
+          </View>
+
+          {/* Register Button */}
+          <TouchableOpacity
+            style={[registerStyles.registerButton, loading && registerStyles.registerButtonDisabled]}
+            onPress={handleRegister}
+            disabled={loading}
+          >
+            <View style={registerStyles.buttonContent}>
+              {loading ? (
+                <View style={registerStyles.loadingContainer}>
+                  <ActivityIndicator color="#FFFFFF" size="small" />
+                  <Text style={registerStyles.loadingText}>Creating account...</Text>
+                </View>
+              ) : (
+                <Text style={registerStyles.registerButtonText}>
+                  Create {selectedRole === 'ARTIST' ? 'Artist' : 'User'} Account
+                </Text>
+              )}
+            </View>
+          </TouchableOpacity>
+
+          {/* Divider */}
+          <View style={registerStyles.divider}>
+            <View style={registerStyles.dividerLine} />
+            <Text style={registerStyles.dividerText}>or</Text>
+            <View style={registerStyles.dividerLine} />
+          </View>
+
+          {/* Login Link */}
+          <TouchableOpacity 
+            style={registerStyles.loginButton} 
+            onPress={navigateToLogin}
+          >
+            <Text style={registerStyles.loginButtonText}>
+              Already have an account? <Text style={registerStyles.loginLinkText}>Sign in</Text>
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Benefits Section */}
+        <View style={registerStyles.benefitsSection}>
+          <Text style={registerStyles.benefitsTitle}>Join thousands of tattoo enthusiasts</Text>
+          <View style={registerStyles.statsContainer}>
+            <View style={registerStyles.statItem}>
+              <Text style={registerStyles.statNumber}>10K+</Text>
+              <Text style={registerStyles.statLabel}>Artists</Text>
+            </View>
+            <View style={registerStyles.statItem}>
+              <Text style={[registerStyles.statNumber, { color: '#8b5cf6' }]}>50K+</Text>
+              <Text style={registerStyles.statLabel}>Users</Text>
+            </View>
+            <View style={registerStyles.statItem}>
+              <Text style={[registerStyles.statNumber, { color: '#10b981' }]}>100K+</Text>
+              <Text style={registerStyles.statLabel}>Bookings</Text>
+            </View>
           </View>
         </View>
-      </View>
-    </View>
+      </ScrollView>
+    </LinearGradient>
   );
-};
-
-export default RegisterForm;
+}

@@ -1,41 +1,46 @@
-import { Stack } from 'expo-router';
+import { Tabs } from 'expo-router'; // Changed from Stack
 import React from 'react';
-import { View, StyleSheet } from 'react-native';
+// import { View, StyleSheet } from 'react-native'; // Removed
+// import { useSafeAreaInsets } from 'react-native-safe-area-context'; // Removed
 
 import { useColorScheme } from '@/hooks/useColorScheme';
 import { useAuth } from '@/contexts/AuthContext';
-import { HamburgerMenu } from '@/components/HamburgerMenu';
+// import { HamburgerMenu } from '@/components/HamburgerMenu'; // Temporarily commented out
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();
   const { isAuthenticated, isArtist } = useAuth();
+  // const insets = useSafeAreaInsets(); // Removed
+  
+  // Manual tabBarHeight calculation and global variable removed
+  // console.log('Tab bar height calculated:', tabBarHeight);
 
   return (
-    <View style={styles.container}>
-      {/* Hamburger menu for navigation */}
-      <HamburgerMenu />
+    // <View style={[styles.container, { paddingBottom: insets.bottom }]}> // View wrapper removed
+      // {/* <HamburgerMenu /> */} // Temporarily commented out
       
-      {/* Stack navigator without visible header */}
-      <Stack
+      <Tabs // Changed from Stack
         screenOptions={{
-          headerShown: false,
+          // headerShown: false, // Default for Tabs is usually true, adjust as needed
+          // Example: tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
         }}
       >
-        <Stack.Screen name="explore" />
-        <Stack.Screen name="tattoos" />
-        <Stack.Screen name="bookings" />
-        {isArtist && <Stack.Screen name="portfolio" />}
-        {isArtist && <Stack.Screen name="manage-bookings" />}
-        <Stack.Screen name="profile" />
-        <Stack.Screen name="messages" />
-      </Stack>
-    </View>
+        <Tabs.Screen name="explore" />
+        <Tabs.Screen name="tattoos" />
+        <Tabs.Screen name="bookings" />
+        {isArtist && <Tabs.Screen name="portfolio" />}
+        {isArtist && <Tabs.Screen name="manage-bookings" />}
+        <Tabs.Screen name="profile" />
+        <Tabs.Screen name="messages" />
+      </Tabs>
+    // </View> // View wrapper removed
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#000',
-  },
-});
+// StyleSheet removed as the View wrapper is gone
+// const styles = StyleSheet.create({
+//   container: {
+//     flex: 1,
+//     backgroundColor: '#000',
+//   },
+// });

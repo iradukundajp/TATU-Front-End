@@ -1,11 +1,14 @@
 import { StyleSheet, Dimensions, Platform } from 'react-native';
 
-const { height } = Dimensions.get('window');
+const { width, height } = Dimensions.get('window');
 
 export const loginStyles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#1a1a2e',
+  },
+  backgroundContainer: {
+    flex: 1,
   },
   gradient: {
     flex: 1,
@@ -13,8 +16,8 @@ export const loginStyles = StyleSheet.create({
   },
   header: {
     alignItems: 'center',
-    paddingTop: height * 0.12,
-    marginBottom: 50,
+    paddingTop: height * 0.1,
+    marginBottom: 30,
   },
   logo: {
     fontSize: 48,
@@ -22,7 +25,7 @@ export const loginStyles = StyleSheet.create({
     color: '#ffffff',
     letterSpacing: 6,
     marginBottom: 12,
-    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
+    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'sans-serif',
   },
   subtitle: {
     fontSize: 24,
@@ -40,7 +43,7 @@ export const loginStyles = StyleSheet.create({
   formContainer: {
     flex: 1,
     justifyContent: 'center',
-    paddingBottom: 80,
+    paddingBottom: 50,
   },
   inputContainer: {
     flexDirection: 'row',
@@ -48,33 +51,29 @@ export const loginStyles = StyleSheet.create({
     backgroundColor: 'rgba(255, 255, 255, 0.1)',
     borderRadius: 20,
     paddingHorizontal: 16,
-    paddingVertical: 14,
+    paddingVertical: 16,
     marginBottom: 20,
-    borderWidth: 2,
-    borderColor: 'transparent',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
   },
   inputFocused: {
     borderColor: '#3b82f6',
     backgroundColor: 'rgba(59, 130, 246, 0.15)',
-    shadowColor: '#3b82f6',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.3,
-    shadowRadius: 10,
-    elevation: 5,
   },
   textInput: {
     flex: 1,
     marginLeft: 12,
     fontSize: 16,
     color: '#ffffff',
-    paddingVertical: 4,
+    height: 24,
   },
   eyeIcon: {
-    padding: 4,
+    padding: 8,
   },
   forgotPassword: {
     alignSelf: 'flex-end',
     marginBottom: 30,
+    padding: 4,
   },
   forgotPasswordText: {
     color: '#3b82f6',
@@ -85,16 +84,13 @@ export const loginStyles = StyleSheet.create({
     borderRadius: 20,
     overflow: 'hidden',
     marginBottom: 30,
-    elevation: 3,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
+    backgroundColor: '#3b82f6',
   },
   loginButtonDisabled: {
     opacity: 0.6,
+    backgroundColor: '#6b7280',
   },
-  buttonGradient: {
+  buttonContent: {
     paddingVertical: 18,
     paddingHorizontal: 24,
     alignItems: 'center',
@@ -145,7 +141,7 @@ export const loginStyles = StyleSheet.create({
     fontWeight: '600',
   },
   footer: {
-    paddingBottom: 50,
+    paddingBottom: 40,
     alignItems: 'center',
     paddingHorizontal: 20,
   },

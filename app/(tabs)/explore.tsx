@@ -63,6 +63,7 @@ export default function ExploreScreen() {
     }
   };
 
+  // This function is already correctly set up to navigate to our artist/[id] page
   const handleArtistPress = (artistId: string) => {
     const artistPath = `/artist/${artistId}` as const;
     router.push(artistPath as any);
@@ -81,52 +82,108 @@ export default function ExploreScreen() {
     );
   };
 
-  const renderArtistCard = ({ item }: { item: Artist }) => (
-    <TouchableFix 
-      style={styles.artistCard}
-      onPress={() => handleArtistPress(item.id)}
-    >
-      <View style={styles.artistImageContainer}>
-        {item.avatarUrl ? (
-          <Image 
-            source={{ uri: item.avatarUrl }} 
-            style={styles.artistImage}
-            contentFit="cover"
-          />
-        ) : (
-          <View style={styles.artistImagePlaceholder}>
-            <IconSymbol name="person.fill" size={40} color="#555555" />
-          </View>
-        )}
-      </View>
-      <View style={styles.artistInfo}>
-        <ThemedText style={styles.artistName}>{item.name}</ThemedText>
-        <ThemedText style={styles.artistLocation}>{item.location}</ThemedText>
-        
-        <View style={styles.artistSpecialties}>
-          {item.specialties.slice(0, 3).map((specialty, index) => (
-            <View key={index} style={styles.specialtyTag}>
-              <ThemedText style={styles.specialtyText}>{specialty}</ThemedText>
-            </View>
-          ))}
-        </View>
-        
-        <View style={styles.artistRating}>
-          {Array(5).fill(0).map((_, i) => (
-            <IconSymbol 
-              key={i} 
-              name="star.fill" 
-              size={14} 
-              color={i < (item.rating || 0) ? "#FFD700" : "#555555"} 
+  // Render artists individually instead of using a FlatList
+  const renderArtists = () => {
+    if (loading) {
+      return <ActivityIndicator size="large" color="#007AFF" style={styles.loader} />;
+    }
+    
+    if (featuredArtists.length === 0) {
+      return (
+        <ThemedView style={styles.emptyStateContainer}>
+          <IconSymbol name="person.2.slash" size={40} color="#555555" />
+          <ThemedText style={styles.emptyStateText}>No artists found</ThemedText>
+        </ThemedView>
+      );
+    }
+    
+    return featuredArtists.map((artist) => (
+      <TouchableFix 
+        key={artist.id}
+        style={styles.artistCard}
+        onPress={() => handleArtistPress(artist.id)}
+      >
+        <View style={styles.artistImageContainer}>
+          {artist.avatarUrl ? (
+            <Image 
+              source={{ uri: artist.avatarUrl }} 
+              style={styles.artistImage}
+              contentFit="cover"
             />
-          ))}
-          {item.reviewCount && (
-            <ThemedText style={styles.reviewCount}>({item.reviewCount})</ThemedText>
+          ) : (
+            <View style={styles.artistImagePlaceholder}>
+              <IconSymbol name="person.fill" size={40} color="#555555" />
+            </View>
           )}
         </View>
+        <View style={styles.artistInfo}>
+          <ThemedText style={styles.artistName}>{artist.name}</ThemedText>
+          <ThemedText style={styles.artistLocation}>{artist.location}</ThemedText>
+          
+          <View style={styles.artistSpecialties}>
+            {artist.specialties.slice(0, 3).map((specialty, index) => (
+              <View key={index} style={styles.specialtyTag}>
+                <ThemedText style={styles.specialtyText}>{specialty}</ThemedText>
+              </View>
+            ))}
+          </View>
+          
+          <View style={styles.artistRating}>
+            {Array(5).fill(0).map((_, i) => (
+              <IconSymbol 
+                key={i} 
+                name="star.fill" 
+                size={14} 
+                color={i < (artist.rating || 0) ? "#FFD700" : "#555555"} 
+              />
+            ))}
+            {artist.reviewCount && (
+              <ThemedText style={styles.reviewCount}>({artist.reviewCount})</ThemedText>
+            )}
+          </View>
+        </View>
+      </TouchableFix>
+    ));
+  };
+
+  // Render designs without a FlatList
+  const renderDesigns = () => {
+    if (designsLoading) {
+      return <ActivityIndicator size="large" color="#007AFF" style={styles.loader} />;
+    }
+    
+    if (recentDesigns.length === 0) {
+      return (
+        <ThemedView style={styles.emptyStateContainer}>
+          <IconSymbol name="photo.stack" size={40} color="#555555" />
+          <ThemedText style={styles.emptyStateText}>No designs found</ThemedText>
+        </ThemedView>
+      );
+    }
+    
+    return (
+      <View style={styles.designsContainer}>
+        {recentDesigns.map((design) => (
+          <TouchableFix
+            key={design.id}
+            style={styles.designCard}
+            onPress={() => handleDesignPress(design)}
+          >
+            <Image 
+              source={{ 
+                uri: `${design.imageUrl.startsWith('http') ? '' : 'http://localhost:5000'}${design.imageUrl}` 
+              }} 
+              style={styles.designImage}
+              contentFit="cover"
+            />
+            <View style={styles.designOverlay}>
+              <ThemedText style={styles.designTitle}>{design.title}</ThemedText>
+            </View>
+          </TouchableFix>
+        ))}
       </View>
-    </TouchableFix>
-  );
+    );
+  };
 
   return (
     <ParallaxScrollView
@@ -224,23 +281,8 @@ export default function ExploreScreen() {
           </TouchableFix>
         </View>
         
-        {loading ? (
-          <ActivityIndicator size="large" color="#007AFF" style={styles.loader} />
-        ) : featuredArtists.length > 0 ? (
-          <FlatList
-            data={featuredArtists}
-            renderItem={renderArtistCard}
-            keyExtractor={item => item.id}
-            horizontal={false}
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.artistListContainer}
-          />
-        ) : (
-          <ThemedView style={styles.emptyStateContainer}>
-            <IconSymbol name="person.2.slash" size={40} color="#555555" />
-            <ThemedText style={styles.emptyStateText}>No artists found</ThemedText>
-          </ThemedView>
-        )}
+        {/* Render artists directly instead of using FlatList */}
+        {renderArtists()}
       </ThemedView>
 
       <ThemedView style={styles.sectionContainer}>
@@ -254,35 +296,8 @@ export default function ExploreScreen() {
           </TouchableFix>
         </View>
         
-        {designsLoading ? (
-          <ActivityIndicator size="large" color="#007AFF" style={styles.loader} />
-        ) : recentDesigns.length > 0 ? (
-          <View style={styles.designsContainer}>
-            {recentDesigns.map((design) => (
-              <TouchableFix
-                key={design.id}
-                style={styles.designCard}
-                onPress={() => handleDesignPress(design)}
-              >
-                <Image 
-                  source={{ 
-                    uri: `${design.imageUrl.startsWith('http') ? '' : 'http://localhost:5000'}${design.imageUrl}` 
-                  }} 
-                  style={styles.designImage}
-                  contentFit="cover"
-                />
-                <View style={styles.designOverlay}>
-                  <ThemedText style={styles.designTitle}>{design.title}</ThemedText>
-                </View>
-              </TouchableFix>
-            ))}
-          </View>
-        ) : (
-          <ThemedView style={styles.emptyStateContainer}>
-            <IconSymbol name="photo.stack" size={40} color="#555555" />
-            <ThemedText style={styles.emptyStateText}>No designs found</ThemedText>
-          </ThemedView>
-        )}
+        {/* Render designs directly instead of using FlatList */}
+        {renderDesigns()}
       </ThemedView>
     </ParallaxScrollView>
   );
@@ -442,9 +457,7 @@ const styles = StyleSheet.create({
     color: '#777777',
   },
   designsContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
+    flexDirection: 'column',
   },
   designCard: {
     width: '100%',
