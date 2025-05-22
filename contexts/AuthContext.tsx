@@ -3,6 +3,7 @@ import { router } from 'expo-router';
 import { Platform } from 'react-native';
 import * as authService from '../services/auth.service';
 import { AuthState, User, RegisterUserData, LoginResponse, UpdateProfileData, UpdatePasswordData } from '../types/auth';
+import { AvatarConfiguration } from '../types/avatar'; // Import AvatarConfiguration
 
 // Create the auth context with proper typing
 const AuthContext = createContext<AuthState | null>(null);
@@ -22,6 +23,8 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       try {
         const storedToken = await authService.getToken();
         const userData = await authService.getCurrentUser();
+        console.log('AuthContext useEffect: Loaded user data from storage:', JSON.stringify(userData, null, 2)); // Existing log
+        console.log('AuthContext useEffect: avatarConfiguration from storage:', userData ? userData.avatarConfiguration : 'userData is null'); // Added log for avatarConfiguration
         
         if (storedToken && userData) {
           setToken(storedToken);
@@ -41,6 +44,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const login = async (email: string, password: string) => {
     try {
       const response = await authService.login(email, password) as LoginResponse;
+      console.log('AuthContext login: User data from authService.login:', JSON.stringify(response.user, null, 2)); // Added log
       setUser(response.user);
       setToken(response.token);
       return response;
@@ -53,6 +57,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const register = async (userData: RegisterUserData) => {
     try {
       const response = await authService.register(userData) as LoginResponse;
+      console.log('AuthContext register: User data from authService.register:', JSON.stringify(response.user, null, 2)); // Added log
       setUser(response.user);
       setToken(response.token);
       return response;
@@ -143,6 +148,20 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     }
   };
 
+  // Update avatar configuration via API
+  const updateAvatarConfiguration = async (config: AvatarConfiguration) => {
+    try {
+      const updatedUser = await authService.updateAvatarConfiguration(config);
+      setUser(updatedUser);
+      // Optionally, update local storage as well if you rely on it for quick reloads
+      await authService.updateUserData(updatedUser);
+      return updatedUser;
+    } catch (error) {
+      console.error('Update avatar configuration error in AuthContext:', error);
+      throw error;
+    }
+  };
+
   // Check if user is an artist
   const isArtist = () => {
     return user?.isArtist === true;
@@ -154,14 +173,15 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     token,
     loading,
     isAuthenticated: !!token,
-    isArtist: isArtist(),
+    isArtist: isArtist(), // Corrected: call isArtist as a function
     login,
     register,
     logout,
     updateUser,
     updateProfile,
     updatePassword,
-    uploadAvatar
+    uploadAvatar,
+    updateAvatarConfiguration, // Added this line
   };
 
   return (
@@ -177,5 +197,5 @@ export const useAuth = (): AuthState => {
   if (!context) {
     throw new Error('useAuth must be used within an AuthProvider');
   }
-  return context;
-}; 
+  return context; // Ensure the context is returned
+};

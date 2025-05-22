@@ -1,3 +1,5 @@
+import { AvatarConfiguration } from './avatar';
+
 export interface User {
   id: string;
   name: string;
@@ -6,6 +8,7 @@ export interface User {
   bio?: string;
   location?: string;
   avatarUrl?: string;
+  avatarConfiguration?: AvatarConfiguration;
   createdAt?: string;
   // Artist-specific fields
   specialties?: string[];
@@ -34,6 +37,7 @@ export interface AuthState {
   updateProfile: (profileData: UpdateProfileData) => Promise<User>;
   updatePassword: (passwordData: UpdatePasswordData) => Promise<any>;
   uploadAvatar: (formData: FormData) => Promise<User>;
+  updateAvatarConfiguration: (config: AvatarConfiguration) => Promise<User>; // Added this line
 }
 
 export interface LoginResponse {
@@ -66,4 +70,4 @@ export interface UpdateProfileData {
 export interface UpdatePasswordData {
   currentPassword: string;
   newPassword: string;
-} 
+}

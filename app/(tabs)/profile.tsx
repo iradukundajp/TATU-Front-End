@@ -7,9 +7,11 @@ import { IconSymbol } from '@/components/ui/IconSymbol';
 import { useAuth } from '@/contexts/AuthContext';
 import { UpdateProfileData, User } from '@/types/auth';
 import * as ImagePicker from 'expo-image-picker';
+import AvatarDisplayComponent from '../../components/AvatarDisplayComponent'; // Import AvatarDisplayComponent
+import { AvatarConfiguration } from '@/types/avatar'; // Import AvatarConfiguration
 
 export default function ProfileScreen() {
-  const { user, isAuthenticated, isArtist, logout, updateProfile, uploadAvatar } = useAuth();
+  const { user, isAuthenticated, isArtist, logout, updateProfile, uploadAvatar, updateAvatarConfiguration } = useAuth(); // Added updateAvatarConfiguration
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(false);
   
@@ -28,6 +30,7 @@ export default function ProfileScreen() {
 
   // Update state when user changes
   useEffect(() => {
+    console.log('ProfileScreen useEffect triggered. User (full object):', JSON.stringify(user, null, 2)); 
     if (user) {
       setName(user.name || '');
       setBio(user.bio || '');
@@ -36,6 +39,11 @@ export default function ProfileScreen() {
       setTattooStyles(Array.isArray(user.styles) ? user.styles : []);
       setExperience(user.experience?.toString() || '');
       setHourlyRate(user.hourlyRate?.toString() || '');
+      
+      console.log('ProfileScreen: User data from context:', JSON.stringify(user, null, 2));
+      console.log('ProfileScreen: avatarConfiguration from context:', user.avatarConfiguration ? JSON.stringify(user.avatarConfiguration, null, 2) : 'avatarConfiguration is missing or null');
+    } else {
+      console.log('User object is null or undefined in profile.tsx useEffect.');
     }
   }, [user]);
 
@@ -49,7 +57,6 @@ export default function ProfileScreen() {
         location,
       };
       
-      // Add artist-specific fields if user is an artist
       if (isArtist) {
         profileData.specialties = specialties;
         profileData.styles = tattooStyles;
@@ -92,21 +99,14 @@ export default function ProfileScreen() {
 
   const handleLogout = () => {
     console.log('Logout button clicked');
-    
-    // For web, implement a direct solution without alert dialog
     if (Platform.OS === 'web') {
       console.log('Web platform detected, performing direct logout');
-      // Clear data from localStorage
       localStorage.removeItem('tatu_auth_token');
       localStorage.removeItem('tatu_user_data');
-      
-      // Force redirect to login page
       console.log('Redirecting to login page');
       window.location.href = '/login';
       return;
     }
-    
-    // For native platforms, use the alert dialog approach
     Alert.alert(
       'Logout',
       'Are you sure you want to logout?',
@@ -121,8 +121,6 @@ export default function ProfileScreen() {
               if (logout) {
                 console.log('Calling logout function');
                 await logout();
-                
-                // Direct navigation if context navigation fails
                 console.log('Fallback navigation to login');
                 if (Platform.OS === 'web') {
                   window.location.href = '/login';
@@ -144,7 +142,6 @@ export default function ProfileScreen() {
 
   const pickImage = async () => {
     try {
-      // Request permissions
       if (Platform.OS !== 'web') {
         const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
         if (status !== 'granted') {
@@ -152,35 +149,70 @@ export default function ProfileScreen() {
           return;
         }
       }
-      
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsEditing: true,
         aspect: [1, 1],
         quality: 0.8,
       });
-      
       if (!result.canceled && result.assets && result.assets.length > 0) {
         const selectedAsset = result.assets[0];
-        
         setLoading(true);
-        
-        // Create form data for upload
         const formData = new FormData();
         formData.append('avatar', {
           uri: selectedAsset.uri,
-          type: 'image/jpeg',
-          name: 'avatar.jpg'
+          // @ts-ignore //TODO: fix type for type: selectedAsset.type || 'image/jpeg',
+          type: 'image/jpeg', // Assuming jpeg, adjust if needed or get from selectedAsset.type if available
+          name: selectedAsset.fileName || 'avatar.jpg'
         } as any);
-        
-        await uploadAvatar(formData);
-        Alert.alert('Success', 'Avatar updated successfully');
+        if (uploadAvatar) {
+          await uploadAvatar(formData);
+          Alert.alert('Success', 'Avatar updated successfully');
+        } else {
+          Alert.alert('Error', 'uploadAvatar function is not available.');
+        }
       }
     } catch (error) {
       console.error('Error uploading avatar:', error);
       Alert.alert('Error', 'Failed to upload avatar');
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Dummy function to test updateAvatarConfiguration - replace with actual UI later
+  const handleTestUpdateAvatarConfig = async () => {
+    if (updateAvatarConfiguration) {
+      try {
+        const newConfig: AvatarConfiguration = {
+          baseMannequinId: 'mannequinTypeA', // Corrected field name
+          tattoos: [
+            {
+              tattooId: 'floralDesign001',
+              x: 50,
+              y: 100,
+              width: 60,
+              height: 80,
+              rotation: 0,
+              zIndex: 1,
+            },
+            {
+              tattooId: 'tribalPattern002',
+              x: 150,
+              y: 180,
+              width: 70,
+              height: 90,
+              rotation: 15,
+              zIndex: 2,
+            },
+          ],
+        };
+        await updateAvatarConfiguration(newConfig);
+        Alert.alert('Success', 'Avatar configuration updated (test)');
+      } catch (error) {
+        console.error('Error updating avatar configuration:', error);
+        Alert.alert('Error', 'Failed to update avatar configuration (test)');
+      }
     }
   };
 
@@ -227,6 +259,16 @@ export default function ProfileScreen() {
           </View>
         </View>
         
+        {/* Display Avatar Configuration */}
+        <View style={styles.section}>
+          <ThemedText type="subtitle">Avatar Configuration</ThemedText>
+          <AvatarDisplayComponent avatarConfiguration={user.avatarConfiguration} />
+          {/* Test button to update avatar configuration */}
+          <TouchableFix onPress={handleTestUpdateAvatarConfig} style={[styles.actionButton, {backgroundColor: '#5cb85c'}]}>
+            <ThemedText style={styles.buttonText}>Test Update Avatar Config</ThemedText>
+          </TouchableFix>
+        </View>
+
         <View style={styles.actions}>
           {isEditing ? (
             <>
@@ -303,7 +345,6 @@ export default function ProfileScreen() {
           <>
             <View style={styles.section}>
               <ThemedText type="subtitle">Specialties</ThemedText>
-              
               {isEditing ? (
                 <>
                   <View style={styles.inputWithButton}>
@@ -358,7 +399,6 @@ export default function ProfileScreen() {
             
             <View style={styles.section}>
               <ThemedText type="subtitle">Tattoo Styles</ThemedText>
-              
               {isEditing ? (
                 <>
                   <View style={styles.inputWithButton}>
@@ -410,9 +450,9 @@ export default function ProfileScreen() {
                 </View>
               )}
             </View>
-            
+
             <View style={styles.section}>
-              <ThemedText type="subtitle">Experience</ThemedText>
+              <ThemedText type="subtitle">Experience (Years)</ThemedText>
               {isEditing ? (
                 <TextInput
                   style={styles.input}
@@ -423,27 +463,23 @@ export default function ProfileScreen() {
                   editable={!loading}
                 />
               ) : (
-                <ThemedText style={styles.detail}>
-                  {user.experience ? `${user.experience} years` : "Not specified"}
-                </ThemedText>
+                <ThemedText style={styles.detail}>{user.experience ? `${user.experience} years` : "Not specified"}</ThemedText>
               )}
             </View>
-            
+
             <View style={styles.section}>
-              <ThemedText type="subtitle">Hourly Rate</ThemedText>
+              <ThemedText type="subtitle">Hourly Rate (€)</ThemedText>
               {isEditing ? (
                 <TextInput
                   style={styles.input}
                   value={hourlyRate}
                   onChangeText={setHourlyRate}
-                  placeholder="Your hourly rate"
+                  placeholder="Hourly rate in EUR"
                   keyboardType="numeric"
                   editable={!loading}
                 />
               ) : (
-                <ThemedText style={styles.detail}>
-                  {user.hourlyRate ? `$${user.hourlyRate}/hour` : "Not specified"}
-                </ThemedText>
+                <ThemedText style={styles.detail}>{user.hourlyRate ? `€${user.hourlyRate}/hr` : "Not specified"}</ThemedText>
               )}
             </View>
           </>
@@ -512,12 +548,12 @@ const styles = StyleSheet.create({
     borderRadius: 4,
     padding: 8,
     fontSize: 18,
-    color: '#FFF',
+    // color: '#FFF', // Assuming ThemedText will handle color
     marginBottom: 4,
   },
   role: {
     fontSize: 16,
-    color: '#AAA',
+    color: '#AAA', // Or use ThemedText's default
   },
   actions: {
     flexDirection: 'row',
@@ -560,7 +596,7 @@ const styles = StyleSheet.create({
     borderRadius: 4,
     padding: 8,
     fontSize: 16,
-    color: '#FFF',
+    // color: '#FFF', // Assuming ThemedText will handle color
     textAlignVertical: 'top',
     minHeight: 80,
   },
@@ -570,7 +606,7 @@ const styles = StyleSheet.create({
     borderRadius: 4,
     padding: 8,
     fontSize: 16,
-    color: '#FFF',
+    // color: '#FFF', // Assuming ThemedText will handle color
   },
   detail: {
     fontSize: 16,
@@ -586,7 +622,7 @@ const styles = StyleSheet.create({
     borderRadius: 4,
     padding: 8,
     fontSize: 16,
-    color: '#FFF',
+    // color: '#FFF', // Assuming ThemedText will handle color
     marginRight: 8,
   },
   addButton: {
@@ -603,7 +639,7 @@ const styles = StyleSheet.create({
   tag: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#333',
+    backgroundColor: '#333', // Or use ThemedView for background
     borderRadius: 16,
     paddingVertical: 4,
     paddingHorizontal: 10,
@@ -611,9 +647,14 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   tagText: {
-    color: '#FFF',
+    // color: '#FFF', // Assuming ThemedText will handle color
   },
   removeTag: {
     marginLeft: 4,
   },
+  // Added style for the test button to make it distinct if needed
+  testButton: {
+    backgroundColor: '#5cb85c', // Green color for test button
+    marginTop: 10, // Add some margin
+  }
 });
