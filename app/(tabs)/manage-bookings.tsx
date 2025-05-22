@@ -30,8 +30,16 @@ export default function ManageBookingsScreen() {
   const fetchBookings = async () => {
     setLoading(true);
     try {
+      console.log("Fetching artist bookings...");
       const data = await bookingService.getArtistBookings();
-      setBookings(data);
+      console.log("Fetched artist bookings:", data);
+      
+      // Sort bookings by date (most recent first)
+      const sortedBookings = [...data].sort((a, b) => {
+        return new Date(b.date).getTime() - new Date(a.date).getTime();
+      });
+      
+      setBookings(sortedBookings);
     } catch (error) {
       console.error('Error fetching bookings:', error);
       Alert.alert('Error', 'Failed to load bookings');
@@ -49,20 +57,26 @@ export default function ManageBookingsScreen() {
   const handleStatusChange = async (id: string, newStatus: Booking['status']) => {
     try {
       let updatedBooking;
+      let statusMessage = '';
       
       switch (newStatus) {
         case 'confirmed':
+          statusMessage = 'Booking confirmed';
           updatedBooking = await bookingService.confirmBooking(id);
           break;
         case 'completed':
+          statusMessage = 'Booking marked as completed';
           updatedBooking = await bookingService.completeBooking(id);
           break;
         case 'cancelled':
+          statusMessage = 'Booking cancelled';
           updatedBooking = await bookingService.cancelBooking(id);
           break;
         default:
           throw new Error(`Invalid status: ${newStatus}`);
       }
+      
+      console.log(`Booking ${id} updated to ${newStatus}:`, updatedBooking);
       
       setBookings(current =>
         current.map(booking =>
@@ -70,7 +84,7 @@ export default function ManageBookingsScreen() {
         )
       );
       
-      Alert.alert('Success', `Booking status updated to ${newStatus}`);
+      Alert.alert('Success', statusMessage);
     } catch (error) {
       console.error(`Error updating booking to ${newStatus}:`, error);
       Alert.alert('Error', `Failed to update booking status to ${newStatus}`);
@@ -105,7 +119,10 @@ export default function ManageBookingsScreen() {
       <ThemedText style={styles.durationText}>{item.duration} minutes</ThemedText>
       
       {item.note && (
-        <ThemedText style={styles.noteText}>{item.note}</ThemedText>
+        <View style={styles.noteContainer}>
+          <ThemedText style={styles.noteLabelText}>Client Note:</ThemedText>
+          <ThemedText style={styles.noteText}>{item.note}</ThemedText>
+        </View>
       )}
       
       <View style={styles.actionsContainer}>
@@ -124,23 +141,51 @@ export default function ManageBookingsScreen() {
               onPress={() => handleStatusChange(item.id, 'cancelled')}
             >
               <IconSymbol name="xmark.circle.fill" size={16} color="#FFFFFF" />
-              <ThemedText style={styles.actionButtonText}>Cancel</ThemedText>
+              <ThemedText style={styles.actionButtonText}>Decline</ThemedText>
             </TouchableFix>
           </>
         )}
         
         {item.status === 'confirmed' && (
-          <TouchableFix 
-            style={[styles.actionButton, styles.completeButton]} 
-            onPress={() => handleStatusChange(item.id, 'completed')}
-          >
-            <IconSymbol name="flag.checkered" size={16} color="#FFFFFF" />
-            <ThemedText style={styles.actionButtonText}>Mark Complete</ThemedText>
-          </TouchableFix>
+          <>
+            <TouchableFix 
+              style={[styles.actionButton, styles.completeButton]} 
+              onPress={() => handleStatusChange(item.id, 'completed')}
+            >
+              <IconSymbol name="flag.checkered" size={16} color="#FFFFFF" />
+              <ThemedText style={styles.actionButtonText}>Mark Complete</ThemedText>
+            </TouchableFix>
+            
+            <TouchableFix 
+              style={[styles.actionButton, styles.cancelButton]} 
+              onPress={() => handleStatusChange(item.id, 'cancelled')}
+            >
+              <IconSymbol name="xmark.circle.fill" size={16} color="#FFFFFF" />
+              <ThemedText style={styles.actionButtonText}>Cancel</ThemedText>
+            </TouchableFix>
+          </>
         )}
       </View>
     </View>
   );
+
+  if (!isAuthenticated || !isArtist) {
+    return (
+      <ThemedView style={styles.container}>
+        <View style={styles.centerContent}>
+          <IconSymbol name="lock.shield" size={60} color="#555555" />
+          <ThemedText style={styles.titleText}>Access Restricted</ThemedText>
+          <ThemedText style={styles.subtitleText}>This section is only for tattoo artists</ThemedText>
+          <TouchableFix 
+            style={styles.backButton}
+            onPress={() => router.replace('/(tabs)/profile')}
+          >
+            <ThemedText style={styles.backButtonText}>Go to Profile</ThemedText>
+          </TouchableFix>
+        </View>
+      </ThemedView>
+    );
+  }
 
   if (loading && bookings.length === 0) {
     return (
@@ -183,6 +228,35 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: 'bold',
     marginBottom: 16,
+  },
+  centerContent: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingBottom: 50,
+  },
+  titleText: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  subtitleText: {
+    fontSize: 16,
+    textAlign: 'center',
+    marginBottom: 24,
+    color: '#999999',
+  },
+  backButton: {
+    backgroundColor: '#007AFF',
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+  },
+  backButtonText: {
+    color: '#FFFFFF',
+    fontWeight: 'bold',
+    fontSize: 16,
   },
   listContainer: {
     paddingBottom: 20,
@@ -241,22 +315,31 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     color: '#BBBBBB',
   },
+  noteContainer: {
+    marginBottom: 12,
+  },
+  noteLabelText: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    marginBottom: 2,
+  },
   noteText: {
     fontSize: 14,
-    marginBottom: 12,
     color: '#AAAAAA',
   },
   actionsContainer: {
     flexDirection: 'row',
     marginTop: 8,
+    flexWrap: 'wrap',
   },
   actionButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 6,
+    paddingVertical: 8,
     paddingHorizontal: 12,
     borderRadius: 4,
     marginRight: 8,
+    marginBottom: 8,
   },
   confirmButton: {
     backgroundColor: '#4CAF50',
@@ -273,4 +356,4 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     marginLeft: 4,
   },
-}); 
+});
