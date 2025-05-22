@@ -1,4 +1,4 @@
-// app/(tabs)/artist/[id].tsx
+// (tabs)/artist/[id].tsx
 import React, { useState, useEffect } from 'react';
 import { StyleSheet, ScrollView, View, Image, Modal, Alert, ActivityIndicator, TouchableOpacity } from 'react-native';
 import { ThemedView } from '@/components/ThemedView';
