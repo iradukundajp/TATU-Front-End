@@ -113,7 +113,7 @@ export function HamburgerMenu() {
                 onPress={() => navigateTo('/(tabs)/tattoos')}
               />
               
-              {isAuthenticated && (
+              {isAuthenticated && !isArtist && (
                 <MenuItem 
                   icon="calendar" 
                   label="Bookings" 
