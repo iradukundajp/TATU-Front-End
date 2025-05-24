@@ -8,8 +8,12 @@ import { IconSymbol } from '@/components/ui/IconSymbol';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
 import * as artistService from '@/services/artist.service';
+import * as reviewService from '@/services/review.service';
 import { Artist } from '@/types/artist';
 import { PortfolioItem } from '@/types/portfolio';
+import { ReviewStatsResponse } from '@/types/review';
+import { StarRating } from '@/components/StarRating';
+import { ArtistReviewsSection } from '@/components/ArtistReviewsSection';
 // Import the BookingForm with its props interface
 import BookingForm, { BookingFormProps } from '@/components/BookingForm';
 
@@ -20,7 +24,9 @@ export default function ArtistDetailScreen() {
   
   const [artist, setArtist] = useState<Artist | null>(null);
   const [portfolio, setPortfolio] = useState<PortfolioItem[]>([]);
+  const [reviewStats, setReviewStats] = useState<ReviewStatsResponse | null>(null);
   const [loading, setLoading] = useState(true);
+  const [reviewsLoading, setReviewsLoading] = useState(true);
   const [showBookingForm, setShowBookingForm] = useState(false);
   
   useEffect(() => {
@@ -45,6 +51,9 @@ export default function ArtistDetailScreen() {
         const portfolioData = await artistService.getArtistPortfolio(id);
         setPortfolio(portfolioData);
         console.log(`Loaded ${portfolioData.length} portfolio items`);
+        
+        // Fetch review stats
+        loadReviewStats(id);
       } catch (error) {
         console.error('Error loading artist data:', error);
         Alert.alert('Error', 'Failed to load artist information');
@@ -55,6 +64,20 @@ export default function ArtistDetailScreen() {
     
     loadArtistData();
   }, [id]);
+  
+  const loadReviewStats = async (artistId: string) => {
+    try {
+      setReviewsLoading(true);
+      const stats = await reviewService.getArtistReviewStats(artistId);
+      setReviewStats(stats);
+      console.log('Review stats loaded:', stats);
+    } catch (error) {
+      console.error('Error loading review stats:', error);
+      setReviewStats(null);
+    } finally {
+      setReviewsLoading(false);
+    }
+  };
   
   const handleBookPress = () => {
     if (!isAuthenticated) {
@@ -152,10 +175,25 @@ export default function ArtistDetailScreen() {
               </View>
               
               <View style={styles.ratingContainer}>
-                <IconSymbol name="star.fill" size={14} color="#FFD700" />
-                <ThemedText style={styles.ratingText}>
-                  {formatRating(artist.rating)} {artist.reviewCount ? `(${artist.reviewCount})` : ''}
-                </ThemedText>
+                {reviewsLoading ? (
+                  <View style={styles.ratingPlaceholder}>
+                    <ThemedText style={styles.loadingText}>Loading ratings...</ThemedText>
+                  </View>
+                ) : reviewStats && reviewStats.totalReviews > 0 ? (
+                  <>
+                    <StarRating 
+                      rating={Math.round(reviewStats.averageRating)} 
+                      size={14} 
+                      starColor="#FFD700"
+                      emptyStarColor="#555555"
+                    />
+                    <ThemedText style={styles.ratingText}>
+                      {reviewStats.averageRating.toFixed(1)} ({reviewStats.totalReviews})
+                    </ThemedText>
+                  </>
+                ) : (
+                  <ThemedText style={styles.noRatingText}>No ratings yet</ThemedText>
+                )}
               </View>
             </View>
           </View>
@@ -217,6 +255,18 @@ export default function ArtistDetailScreen() {
             </View>
           ) : (
             <ThemedText style={styles.emptyPortfolioText}>No portfolio items yet</ThemedText>
+          )}
+        </View>
+        
+        {/* Reviews Section */}
+        <View style={styles.reviewsSection}>
+          {artist && (
+            <ArtistReviewsSection 
+              artistId={artist.id}
+              artistName={artist.name}
+              canLeaveReview={true}
+              maxPreviewReviews={10}
+            />
           )}
         </View>
         
@@ -438,5 +488,21 @@ const styles = StyleSheet.create({
     top: 12,
     right: 12,
     zIndex: 1,
+  },
+  ratingPlaceholder: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  loadingText: {
+    fontSize: 14,
+    color: '#AAAAAA',
+  },
+  noRatingText: {
+    fontSize: 14,
+    color: '#AAAAAA',
+    fontStyle: 'italic',
+  },
+  reviewsSection: {
+    padding: 16,
   },
 });

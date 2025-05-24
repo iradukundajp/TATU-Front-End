@@ -9,6 +9,7 @@ import ParallaxScrollView from '@/components/ParallaxScrollView';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { TouchableFix } from '@/components/TouchableFix';
+import { ArtistCard } from '@/components/ArtistCard';
 import { IconSymbol } from '@/components/ui/IconSymbol';
 import * as artistService from '@/services/artist.service';
 import * as tattooService from '@/services/tattoo.service';
@@ -63,7 +64,6 @@ export default function ExploreScreen() {
     }
   };
 
-  // This function is already correctly set up to navigate to our artist/[id] page
   const handleArtistPress = (artistId: string) => {
     const artistPath = `/artist/${artistId}` as const;
     router.push(artistPath as any);
@@ -82,108 +82,12 @@ export default function ExploreScreen() {
     );
   };
 
-  // Render artists individually instead of using a FlatList
-  const renderArtists = () => {
-    if (loading) {
-      return <ActivityIndicator size="large" color="#007AFF" style={styles.loader} />;
-    }
-    
-    if (featuredArtists.length === 0) {
-      return (
-        <ThemedView style={styles.emptyStateContainer}>
-          <IconSymbol name="person.2.slash" size={40} color="#555555" />
-          <ThemedText style={styles.emptyStateText}>No artists found</ThemedText>
-        </ThemedView>
-      );
-    }
-    
-    return featuredArtists.map((artist) => (
-      <TouchableFix 
-        key={artist.id}
-        style={styles.artistCard}
-        onPress={() => handleArtistPress(artist.id)}
-      >
-        <View style={styles.artistImageContainer}>
-          {artist.avatarUrl ? (
-            <Image 
-              source={{ uri: artist.avatarUrl }} 
-              style={styles.artistImage}
-              contentFit="cover"
-            />
-          ) : (
-            <View style={styles.artistImagePlaceholder}>
-              <IconSymbol name="person.fill" size={40} color="#555555" />
-            </View>
-          )}
-        </View>
-        <View style={styles.artistInfo}>
-          <ThemedText style={styles.artistName}>{artist.name}</ThemedText>
-          <ThemedText style={styles.artistLocation}>{artist.location}</ThemedText>
-          
-          <View style={styles.artistSpecialties}>
-            {artist.specialties.slice(0, 3).map((specialty, index) => (
-              <View key={index} style={styles.specialtyTag}>
-                <ThemedText style={styles.specialtyText}>{specialty}</ThemedText>
-              </View>
-            ))}
-          </View>
-          
-          <View style={styles.artistRating}>
-            {Array(5).fill(0).map((_, i) => (
-              <IconSymbol 
-                key={i} 
-                name="star.fill" 
-                size={14} 
-                color={i < (artist.rating || 0) ? "#FFD700" : "#555555"} 
-              />
-            ))}
-            {artist.reviewCount && (
-              <ThemedText style={styles.reviewCount}>({artist.reviewCount})</ThemedText>
-            )}
-          </View>
-        </View>
-      </TouchableFix>
-    ));
-  };
-
-  // Render designs without a FlatList
-  const renderDesigns = () => {
-    if (designsLoading) {
-      return <ActivityIndicator size="large" color="#007AFF" style={styles.loader} />;
-    }
-    
-    if (recentDesigns.length === 0) {
-      return (
-        <ThemedView style={styles.emptyStateContainer}>
-          <IconSymbol name="photo.stack" size={40} color="#555555" />
-          <ThemedText style={styles.emptyStateText}>No designs found</ThemedText>
-        </ThemedView>
-      );
-    }
-    
-    return (
-      <View style={styles.designsContainer}>
-        {recentDesigns.map((design) => (
-          <TouchableFix
-            key={design.id}
-            style={styles.designCard}
-            onPress={() => handleDesignPress(design)}
-          >
-            <Image 
-              source={{ 
-                uri: `${design.imageUrl.startsWith('http') ? '' : 'http://localhost:5000'}${design.imageUrl}` 
-              }} 
-              style={styles.designImage}
-              contentFit="cover"
-            />
-            <View style={styles.designOverlay}>
-              <ThemedText style={styles.designTitle}>{design.title}</ThemedText>
-            </View>
-          </TouchableFix>
-        ))}
-      </View>
-    );
-  };
+  const renderArtistCard = ({ item }: { item: Artist }) => (
+    <ArtistCard
+      artist={item}
+      onPress={handleArtistPress}
+    />
+  );
 
   return (
     <ParallaxScrollView
@@ -281,8 +185,23 @@ export default function ExploreScreen() {
           </TouchableFix>
         </View>
         
-        {/* Render artists directly instead of using FlatList */}
-        {renderArtists()}
+        {loading ? (
+          <ActivityIndicator size="large" color="#007AFF" style={styles.loader} />
+        ) : featuredArtists.length > 0 ? (
+          <FlatList
+            data={featuredArtists}
+            renderItem={renderArtistCard}
+            keyExtractor={item => item.id}
+            horizontal={false}
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.artistListContainer}
+          />
+        ) : (
+          <ThemedView style={styles.emptyStateContainer}>
+            <IconSymbol name="person.2.slash" size={40} color="#555555" />
+            <ThemedText style={styles.emptyStateText}>No artists found</ThemedText>
+          </ThemedView>
+        )}
       </ThemedView>
 
       <ThemedView style={styles.sectionContainer}>
@@ -296,8 +215,35 @@ export default function ExploreScreen() {
           </TouchableFix>
         </View>
         
-        {/* Render designs directly instead of using FlatList */}
-        {renderDesigns()}
+        {designsLoading ? (
+          <ActivityIndicator size="large" color="#007AFF" style={styles.loader} />
+        ) : recentDesigns.length > 0 ? (
+          <View style={styles.designsContainer}>
+            {recentDesigns.map((design) => (
+              <TouchableFix
+                key={design.id}
+                style={styles.designCard}
+                onPress={() => handleDesignPress(design)}
+              >
+                <Image 
+                  source={{ 
+                    uri: `${design.imageUrl.startsWith('http') ? '' : 'http://localhost:5000'}${design.imageUrl}` 
+                  }} 
+                  style={styles.designImage}
+                  contentFit="cover"
+                />
+                <View style={styles.designOverlay}>
+                  <ThemedText style={styles.designTitle}>{design.title}</ThemedText>
+                </View>
+              </TouchableFix>
+            ))}
+          </View>
+        ) : (
+          <ThemedView style={styles.emptyStateContainer}>
+            <IconSymbol name="photo.stack" size={40} color="#555555" />
+            <ThemedText style={styles.emptyStateText}>No designs found</ThemedText>
+          </ThemedView>
+        )}
       </ThemedView>
     </ParallaxScrollView>
   );
@@ -384,69 +330,6 @@ const styles = StyleSheet.create({
   artistListContainer: {
     paddingVertical: 8,
   },
-  artistCard: {
-    flexDirection: 'row',
-    backgroundColor: '#1F1F1F',
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 12,
-  },
-  artistImageContainer: {
-    marginRight: 12,
-  },
-  artistImage: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-  },
-  artistImagePlaceholder: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: '#2A2A2A',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  artistInfo: {
-    flex: 1,
-    justifyContent: 'center',
-  },
-  artistName: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 4,
-  },
-  artistLocation: {
-    fontSize: 14,
-    color: '#AAAAAA',
-    marginBottom: 6,
-  },
-  artistSpecialties: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    marginBottom: 6,
-  },
-  specialtyTag: {
-    backgroundColor: '#333333',
-    borderRadius: 4,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    marginRight: 6,
-    marginBottom: 4,
-  },
-  specialtyText: {
-    fontSize: 12,
-    color: '#CCCCCC',
-  },
-  artistRating: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  reviewCount: {
-    marginLeft: 4,
-    fontSize: 12,
-    color: '#AAAAAA',
-  },
   emptyStateContainer: {
     alignItems: 'center',
     justifyContent: 'center',
@@ -457,7 +340,9 @@ const styles = StyleSheet.create({
     color: '#777777',
   },
   designsContainer: {
-    flexDirection: 'column',
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
   },
   designCard: {
     width: '100%',
