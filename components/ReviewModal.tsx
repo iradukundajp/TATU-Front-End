@@ -5,10 +5,10 @@ import {
   StyleSheet,
   Alert,
   SafeAreaView,
+  TouchableOpacity,
 } from 'react-native';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
-import { TouchableFix } from '@/components/TouchableFix';
 import { ReviewForm } from '@/components/ReviewForm';
 import { IconSymbol } from '@/components/ui/IconSymbol';
 import { ReviewFormData } from '@/types/review';
@@ -81,6 +81,10 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
     }
   };
 
+  const handleDirectClose = () => {
+    onClose();
+  };
+
   const handleCancel = () => {
     if (isSubmitting && !showSuccess) {
       return;
@@ -96,21 +100,8 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
       return;
     }
 
-    Alert.alert(
-      'Cancel Review',
-      'Are you sure you want to cancel? Your review will be lost.',
-      [
-        {
-          text: 'Keep Writing',
-          style: 'cancel',
-        },
-        {
-          text: 'Cancel Review',
-          style: 'destructive',
-          onPress: onClose,
-        },
-      ]
-    );
+    // Direct close without confirmation for better UX
+    onClose();
   };
 
   return (
@@ -118,19 +109,19 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
       visible={visible}
       animationType="slide"
       presentationStyle="pageSheet"
-      onRequestClose={handleCancel}
+      onRequestClose={handleDirectClose}
     >
       <SafeAreaView style={styles.container}>
         <ThemedView style={styles.modalContent}>
           {/* Header */}
           <View style={styles.header}>
-            <TouchableFix
+            <TouchableOpacity
               style={styles.closeButton}
               onPress={handleCancel}
               disabled={isSubmitting && !showSuccess}
             >
               <IconSymbol name="xmark" size={20} color="#FFFFFF" />
-            </TouchableFix>
+            </TouchableOpacity>
             
             <ThemedText style={styles.headerTitle}>
               {showSuccess ? 'Success' : 'Write Review'}
