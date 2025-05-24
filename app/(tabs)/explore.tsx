@@ -9,6 +9,7 @@ import ParallaxScrollView from '@/components/ParallaxScrollView';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { TouchableFix } from '@/components/TouchableFix';
+import { ArtistCard } from '@/components/ArtistCard';
 import { IconSymbol } from '@/components/ui/IconSymbol';
 import * as artistService from '@/services/artist.service';
 import * as tattooService from '@/services/tattoo.service';
@@ -82,50 +83,10 @@ export default function ExploreScreen() {
   };
 
   const renderArtistCard = ({ item }: { item: Artist }) => (
-    <TouchableFix 
-      style={styles.artistCard}
-      onPress={() => handleArtistPress(item.id)}
-    >
-      <View style={styles.artistImageContainer}>
-        {item.avatarUrl ? (
-          <Image 
-            source={{ uri: item.avatarUrl }} 
-            style={styles.artistImage}
-            contentFit="cover"
-          />
-        ) : (
-          <View style={styles.artistImagePlaceholder}>
-            <IconSymbol name="person.fill" size={40} color="#555555" />
-          </View>
-        )}
-      </View>
-      <View style={styles.artistInfo}>
-        <ThemedText style={styles.artistName}>{item.name}</ThemedText>
-        <ThemedText style={styles.artistLocation}>{item.location}</ThemedText>
-        
-        <View style={styles.artistSpecialties}>
-          {item.specialties.slice(0, 3).map((specialty, index) => (
-            <View key={index} style={styles.specialtyTag}>
-              <ThemedText style={styles.specialtyText}>{specialty}</ThemedText>
-            </View>
-          ))}
-        </View>
-        
-        <View style={styles.artistRating}>
-          {Array(5).fill(0).map((_, i) => (
-            <IconSymbol 
-              key={i} 
-              name="star.fill" 
-              size={14} 
-              color={i < (item.rating || 0) ? "#FFD700" : "#555555"} 
-            />
-          ))}
-          {item.reviewCount && (
-            <ThemedText style={styles.reviewCount}>({item.reviewCount})</ThemedText>
-          )}
-        </View>
-      </View>
-    </TouchableFix>
+    <ArtistCard
+      artist={item}
+      onPress={handleArtistPress}
+    />
   );
 
   return (
@@ -368,69 +329,6 @@ const styles = StyleSheet.create({
   },
   artistListContainer: {
     paddingVertical: 8,
-  },
-  artistCard: {
-    flexDirection: 'row',
-    backgroundColor: '#1F1F1F',
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 12,
-  },
-  artistImageContainer: {
-    marginRight: 12,
-  },
-  artistImage: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-  },
-  artistImagePlaceholder: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: '#2A2A2A',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  artistInfo: {
-    flex: 1,
-    justifyContent: 'center',
-  },
-  artistName: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 4,
-  },
-  artistLocation: {
-    fontSize: 14,
-    color: '#AAAAAA',
-    marginBottom: 6,
-  },
-  artistSpecialties: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    marginBottom: 6,
-  },
-  specialtyTag: {
-    backgroundColor: '#333333',
-    borderRadius: 4,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    marginRight: 6,
-    marginBottom: 4,
-  },
-  specialtyText: {
-    fontSize: 12,
-    color: '#CCCCCC',
-  },
-  artistRating: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  reviewCount: {
-    marginLeft: 4,
-    fontSize: 12,
-    color: '#AAAAAA',
   },
   emptyStateContainer: {
     alignItems: 'center',

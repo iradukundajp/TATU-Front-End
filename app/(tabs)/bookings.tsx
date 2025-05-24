@@ -3,6 +3,7 @@ import { StyleSheet, FlatList, View, Alert, Image, ActivityIndicator, TouchableO
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { TouchableFix } from '@/components/TouchableFix';
+import { ReviewModal } from '@/components/ReviewModal';
 import { useAuth } from '@/contexts/AuthContext';
 import { IconSymbol } from '@/components/ui/IconSymbol';
 import { Booking } from '@/types/booking';
@@ -15,6 +16,15 @@ export default function BookingsScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [reviewModal, setReviewModal] = useState<{
+    visible: boolean;
+    artistId: string;
+    artistName: string;
+  }>({
+    visible: false,
+    artistId: '',
+    artistName: '',
+  });
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -147,6 +157,27 @@ export default function BookingsScreen() {
     }
   };
 
+  const handleLeaveReview = (booking: Booking) => {
+    setReviewModal({
+      visible: true,
+      artistId: booking.artistId,
+      artistName: booking.artistName,
+    });
+  };
+
+  const handleCloseReviewModal = () => {
+    setReviewModal({
+      visible: false,
+      artistId: '',
+      artistName: '',
+    });
+  };
+
+  const handleReviewSubmitted = () => {
+    // Optionally refresh bookings or show a success message
+    console.log('Review submitted successfully');
+  };
+
   const renderItem = ({ item }: { item: Booking }) => (
     <View style={styles.bookingCard}>
       <View style={styles.bookingHeader}>
@@ -189,7 +220,7 @@ export default function BookingsScreen() {
         {item.status === 'completed' && (
           <TouchableFix 
             style={[styles.actionButton, styles.reviewButton]} 
-            onPress={() => Alert.alert('Coming Soon', 'Review functionality will be available soon')}
+            onPress={() => handleLeaveReview(item)}
           >
             <IconSymbol name="star.fill" size={16} color="#FFFFFF" />
             <ThemedText style={styles.actionButtonText}>Leave Review</ThemedText>
@@ -292,6 +323,14 @@ export default function BookingsScreen() {
           onRefresh={handleRefresh}
         />
       )}
+
+      <ReviewModal
+        visible={reviewModal.visible}
+        artistId={reviewModal.artistId}
+        artistName={reviewModal.artistName}
+        onClose={handleCloseReviewModal}
+        onReviewSubmitted={handleReviewSubmitted}
+      />
     </ThemedView>
   );
 }
