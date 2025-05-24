@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, FlatList, View, Alert, Image, ActivityIndicator } from 'react-native';
+import { StyleSheet, FlatList, View, Alert, Image, ActivityIndicator, TouchableOpacity } from 'react-native';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { TouchableFix } from '@/components/TouchableFix';
@@ -7,12 +7,14 @@ import { useAuth } from '@/contexts/AuthContext';
 import { IconSymbol } from '@/components/ui/IconSymbol';
 import { Booking } from '@/types/booking';
 import * as bookingService from '@/services/booking.service';
+import { router } from 'expo-router';
 
 export default function BookingsScreen() {
-  const { user, isAuthenticated } = useAuth();
+  const { user, isAuthenticated, logout } = useAuth();
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -24,13 +26,48 @@ export default function BookingsScreen() {
   }, [isAuthenticated]);
 
   const fetchBookings = async () => {
+    if (!isAuthenticated) {
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
+    setError(null);
+    
     try {
+      console.log("Fetching bookings...");
       const data = await bookingService.getMyBookings();
-      setBookings(data);
-    } catch (error) {
+      console.log("Fetched bookings:", data);
+      
+      // Sort bookings by date (most recent first)
+      const sortedBookings = [...data].sort((a, b) => {
+        return new Date(b.date).getTime() - new Date(a.date).getTime();
+      });
+      
+      setBookings(sortedBookings);
+      setError(null);
+    } catch (error: any) {
       console.error('Error fetching bookings:', error);
-      Alert.alert('Error', 'Failed to load your bookings');
+      
+      // Handle specific error cases
+      if (error?.status === 401) {
+        console.log('Token expired or invalid - redirecting to login');
+        setError('Your session has expired. Please log in again.');
+        
+        // Clear auth data and redirect to login
+        if (logout) {
+          await logout();
+        }
+        router.replace('/login');
+        return;
+      }
+      
+      // Handle network errors
+      if (error?.status === 0 || error?.status === 408) {
+        setError('Network error. Please check your connection and try again.');
+      } else {
+        setError(error?.message || 'Failed to load your bookings');
+      }
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -39,6 +76,10 @@ export default function BookingsScreen() {
 
   const handleRefresh = () => {
     setRefreshing(true);
+    fetchBookings();
+  };
+
+  const handleRetry = () => {
     fetchBookings();
   };
 
@@ -56,22 +97,39 @@ export default function BookingsScreen() {
           text: 'Yes, Cancel',
           onPress: async () => {
             try {
+              console.log(`Cancelling booking with ID: ${id}`);
               const updatedBooking = await bookingService.cancelBooking(id);
+              
               setBookings(current =>
                 current.map(booking =>
                   booking.id === id ? updatedBooking : booking
                 )
               );
+              
               Alert.alert('Success', 'Your booking has been cancelled');
-            } catch (error) {
+            } catch (error: any) {
               console.error('Error cancelling booking:', error);
-              Alert.alert('Error', 'Failed to cancel booking');
+              
+              if (error?.status === 401) {
+                Alert.alert('Session Expired', 'Please log in again to cancel your booking');
+                if (logout) {
+                  await logout();
+                }
+                router.replace('/login');
+              } else {
+                Alert.alert('Error', 'Failed to cancel booking');
+              }
             }
           },
           style: 'destructive'
         }
       ]
     );
+  };
+
+  const handleViewArtist = (artistId: string) => {
+    const artistPath = `/artist/${artistId}` as const;
+    router.push(artistPath as any);
   };
 
   const formatDate = (dateString: string) => {
@@ -92,7 +150,10 @@ export default function BookingsScreen() {
   const renderItem = ({ item }: { item: Booking }) => (
     <View style={styles.bookingCard}>
       <View style={styles.bookingHeader}>
-        <View style={styles.artistInfo}>
+        <TouchableOpacity 
+          style={styles.artistInfo}
+          onPress={() => handleViewArtist(item.artistId)}
+        >
           {item.artistAvatar ? (
             <Image source={{ uri: item.artistAvatar }} style={styles.artistAvatar} />
           ) : (
@@ -101,7 +162,7 @@ export default function BookingsScreen() {
             </View>
           )}
           <ThemedText style={styles.artistName}>{item.artistName}</ThemedText>
-        </View>
+        </TouchableOpacity>
         <View style={[styles.statusBadge, { backgroundColor: getStatusColor(item.status) }]}>
           <ThemedText style={styles.statusText}>{item.status}</ThemedText>
         </View>
@@ -134,6 +195,14 @@ export default function BookingsScreen() {
             <ThemedText style={styles.actionButtonText}>Leave Review</ThemedText>
           </TouchableFix>
         )}
+        
+        <TouchableFix 
+          style={[styles.actionButton, styles.viewButton]} 
+          onPress={() => handleViewArtist(item.artistId)}
+        >
+          <IconSymbol name="person.fill" size={16} color="#FFFFFF" />
+          <ThemedText style={styles.actionButtonText}>View Artist</ThemedText>
+        </TouchableFix>
       </View>
     </View>
   );
@@ -141,7 +210,17 @@ export default function BookingsScreen() {
   if (!isAuthenticated) {
     return (
       <ThemedView style={styles.container}>
-        <ThemedText>Please log in to view your bookings</ThemedText>
+        <View style={styles.centerContent}>
+          <IconSymbol name="person.crop.circle.badge.xmark" size={60} color="#555555" />
+          <ThemedText style={styles.titleText}>Not Logged In</ThemedText>
+          <ThemedText style={styles.subtitleText}>Please log in to view your bookings</ThemedText>
+          <TouchableFix 
+            style={styles.loginButton}
+            onPress={() => router.push('/login')}
+          >
+            <ThemedText style={styles.loginButtonText}>Go to Login</ThemedText>
+          </TouchableFix>
+        </View>
       </ThemedView>
     );
   }
@@ -149,7 +228,30 @@ export default function BookingsScreen() {
   if (loading && bookings.length === 0) {
     return (
       <ThemedView style={styles.container}>
-        <ActivityIndicator size="large" color="#007AFF" />
+        <View style={styles.centerContent}>
+          <ActivityIndicator size="large" color="#007AFF" />
+          <ThemedText style={styles.loadingText}>Loading your bookings...</ThemedText>
+        </View>
+      </ThemedView>
+    );
+  }
+
+  // Show error state
+  if (error && bookings.length === 0) {
+    return (
+      <ThemedView style={styles.container}>
+        <View style={styles.centerContent}>
+          <IconSymbol name="exclamationmark.triangle" size={60} color="#F44336" />
+          <ThemedText style={styles.titleText}>Unable to Load Bookings</ThemedText>
+          <ThemedText style={styles.subtitleText}>{error}</ThemedText>
+          <TouchableFix 
+            style={styles.retryButton}
+            onPress={handleRetry}
+          >
+            <IconSymbol name="arrow.clockwise" size={16} color="#FFFFFF" />
+            <ThemedText style={styles.retryButtonText}>Try Again</ThemedText>
+          </TouchableFix>
+        </View>
       </ThemedView>
     );
   }
@@ -158,11 +260,27 @@ export default function BookingsScreen() {
     <ThemedView style={styles.container}>
       <ThemedText type="title" style={styles.title}>My Bookings</ThemedText>
       
+      {error && (
+        <View style={styles.errorBanner}>
+          <IconSymbol name="exclamationmark.triangle" size={16} color="#F44336" />
+          <ThemedText style={styles.errorText}>{error}</ThemedText>
+          <TouchableOpacity onPress={handleRetry}>
+            <IconSymbol name="arrow.clockwise" size={16} color="#007AFF" />
+          </TouchableOpacity>
+        </View>
+      )}
+      
       {bookings.length === 0 ? (
         <View style={styles.emptyState}>
           <IconSymbol name="calendar" size={60} color="#555555" />
           <ThemedText style={styles.emptyStateText}>No bookings yet</ThemedText>
           <ThemedText style={styles.emptyStateSubtext}>Explore artists to book your first tattoo session!</ThemedText>
+          <TouchableFix 
+            style={styles.exploreButton}
+            onPress={() => router.push('/(tabs)/explore')}
+          >
+            <ThemedText style={styles.exploreButtonText}>Explore Artists</ThemedText>
+          </TouchableFix>
         </View>
       ) : (
         <FlatList
@@ -188,6 +306,70 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     marginBottom: 16,
   },
+  centerContent: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingBottom: 50,
+  },
+  titleText: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  subtitleText: {
+    fontSize: 16,
+    textAlign: 'center',
+    marginBottom: 24,
+    color: '#999999',
+  },
+  loadingText: {
+    fontSize: 16,
+    marginTop: 16,
+    color: '#999999',
+  },
+  loginButton: {
+    backgroundColor: '#007AFF',
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+  },
+  loginButtonText: {
+    color: '#FFFFFF',
+    fontWeight: 'bold',
+    fontSize: 16,
+  },
+  retryButton: {
+    backgroundColor: '#007AFF',
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  retryButtonText: {
+    color: '#FFFFFF',
+    fontWeight: 'bold',
+    fontSize: 16,
+    marginLeft: 8,
+  },
+  errorBanner: {
+    backgroundColor: '#FFF3CD',
+    borderColor: '#F44336',
+    borderWidth: 1,
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  errorText: {
+    flex: 1,
+    marginLeft: 8,
+    marginRight: 8,
+    color: '#721C24',
+  },
   emptyState: {
     flex: 1,
     justifyContent: 'center',
@@ -205,6 +387,18 @@ const styles = StyleSheet.create({
     marginTop: 8,
     color: '#555555',
     textAlign: 'center',
+  },
+  exploreButton: {
+    backgroundColor: '#007AFF',
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+    marginTop: 24,
+  },
+  exploreButtonText: {
+    color: '#FFFFFF',
+    fontWeight: 'bold',
+    fontSize: 16,
   },
   listContainer: {
     paddingBottom: 20,
@@ -272,6 +466,7 @@ const styles = StyleSheet.create({
   actionsContainer: {
     flexDirection: 'row',
     marginTop: 8,
+    flexWrap: 'wrap',
   },
   actionButton: {
     flexDirection: 'row',
@@ -280,6 +475,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     borderRadius: 4,
     marginRight: 8,
+    marginBottom: 8,
   },
   cancelButton: {
     backgroundColor: '#F44336',
@@ -287,10 +483,13 @@ const styles = StyleSheet.create({
   reviewButton: {
     backgroundColor: '#FFC107',
   },
+  viewButton: {
+    backgroundColor: '#2196F3',
+  },
   actionButtonText: {
     color: '#FFFFFF',
     fontSize: 14,
     fontWeight: '500',
     marginLeft: 4,
   },
-}); 
+});
