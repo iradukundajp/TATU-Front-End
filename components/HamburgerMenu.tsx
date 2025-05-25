@@ -113,7 +113,7 @@ export function HamburgerMenu() {
                 onPress={() => navigateTo('/(tabs)/tattoos')}
               />
               
-              {isAuthenticated && (
+              {isAuthenticated && !isArtist && (
                 <MenuItem 
                   icon="calendar" 
                   label="Bookings" 
@@ -193,10 +193,7 @@ const styles = StyleSheet.create({
   },
   hamburgerButton: {
     padding: 8,
-    position: 'absolute',
-    top: Platform.OS === 'web' ? 12 : 48,
-    left: 12,
-    zIndex: 100,
+    marginLeft: 4,
   },
   backdrop: {
     position: 'absolute',

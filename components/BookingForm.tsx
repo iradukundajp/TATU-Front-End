@@ -1,0 +1,553 @@
+// components/BookingForm.tsx
+import React, { useState, useEffect } from 'react';
+import { StyleSheet, View, TextInput, Alert, ActivityIndicator, Modal, TouchableOpacity, ScrollView } from 'react-native';
+import { ThemedText } from './ThemedText';
+import { ThemedView } from './ThemedView';
+import { TouchableFix } from './TouchableFix';
+import { IconSymbol } from './ui/IconSymbol';
+import * as artistService from '@/services/artist.service';
+import * as bookingService from '@/services/booking.service';
+import { Artist } from '@/types/artist';
+
+// Explicitly define the component props interface
+export interface BookingFormProps {
+  artistId: string;
+  onSuccess?: () => void;
+  onCancel?: () => void;
+}
+
+export default function BookingForm({ artistId, onSuccess, onCancel }: BookingFormProps) {
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [artist, setArtist] = useState<Artist | null>(null);
+  const [selectedDate, setSelectedDate] = useState(new Date());
+  const [showDateModal, setShowDateModal] = useState(false);
+  const [availableSlots, setAvailableSlots] = useState<Array<{ startHour: number; endHour: number }>>([]);
+  const [selectedTimeSlot, setSelectedTimeSlot] = useState<number | null>(null);
+  const [duration, setDuration] = useState('60'); // Default 60 minutes
+  const [note, setNote] = useState('');
+  const [apiError, setApiError] = useState<string | null>(null);
+
+  // Generate array of dates for the next 30 days
+  const generateDates = () => {
+    const dates = [];
+    const today = new Date();
+    
+    for (let i = 0; i < 30; i++) {
+      const date = new Date();
+      date.setDate(today.getDate() + i);
+      dates.push(date);
+    }
+    
+    return dates;
+  };
+  
+  const dateOptions = generateDates();
+
+  // Load artist data and available slots
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        setLoading(true);
+        setApiError(null);
+        
+        console.log(`Loading artist data for ID: ${artistId}`);
+        const artistData = await artistService.getArtistById(artistId);
+        
+        if (!artistData) {
+          setApiError("Failed to load artist information");
+          return;
+        }
+        
+        setArtist(artistData);
+        console.log("Artist data loaded:", artistData.name);
+        
+        await loadAvailableSlots(selectedDate);
+      } catch (error) {
+        console.error('Error loading artist data:', error);
+        setApiError("Failed to connect to the server. Please check your connection and try again.");
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    loadData();
+  }, [artistId]);
+
+  // Load available time slots for selected date
+  const loadAvailableSlots = async (date: Date) => {
+    try {
+      // Format date to YYYY-MM-DD
+      const formattedDate = date.toISOString().split('T')[0];
+      
+      console.log(`Loading available slots for artist ${artistId} on date ${formattedDate}`);
+      const slots = await artistService.getAvailableTimeSlots(artistId, formattedDate);
+      
+      console.log('Loaded available slots:', slots);
+      setAvailableSlots(slots);
+      
+      // If no slots are returned, use default business hours for the demo
+      if (!slots || slots.length === 0) {
+        setAvailableSlots([{startHour: 9, endHour: 18}]);
+        console.log("No slots returned from API, using default business hours");
+      }
+      
+      setSelectedTimeSlot(null); // Reset selected time when date changes
+    } catch (error) {
+      console.error('Error loading available slots:', error);
+      setApiError("Failed to load available time slots. Please try a different date.");
+      setAvailableSlots([]);
+    }
+  };
+
+  // Format date for display
+  const formatDate = (date: Date) => {
+    return date.toLocaleDateString(undefined, { 
+      weekday: 'long', 
+      year: 'numeric', 
+      month: 'long', 
+      day: 'numeric' 
+    });
+  };
+
+  // Handle date selection from modal
+  const handleDateSelect = (date: Date) => {
+    setSelectedDate(date);
+    setShowDateModal(false);
+    loadAvailableSlots(date);
+  };
+
+  // Generate time slot display text
+  const getTimeDisplay = (hour: number) => {
+    const period = hour >= 12 ? 'PM' : 'AM';
+    const displayHour = hour % 12 || 12;
+    return `${displayHour}:00 ${period}`;
+  };
+
+  // Validate form before submission
+  const validateForm = () => {
+    if (!selectedTimeSlot) {
+      Alert.alert('Error', 'Please select a time slot');
+      return false;
+    }
+
+    if (!duration || parseInt(duration) <= 0) {
+      Alert.alert('Error', 'Please enter a valid duration');
+      return false;
+    }
+
+    return true;
+  };
+
+  // Handle booking submission
+  const handleSubmit = async () => {
+    if (!validateForm()) {
+      return;
+    }
+
+    try {
+      setSubmitting(true);
+      setApiError(null);
+      
+      const bookingDate = new Date(
+        selectedDate.getFullYear(),
+        selectedDate.getMonth(),
+        selectedDate.getDate(),
+        selectedTimeSlot!,
+        0, 0
+      );
+      
+      const bookingData = {
+        artistId,
+        date: bookingDate.toISOString(),
+        duration: parseInt(duration),
+        note: note.trim()
+      };
+      
+      console.log('Creating booking with data:', bookingData);
+      
+      // Use the createBooking method from booking service
+      const booking = await bookingService.createBooking(bookingData);
+      
+      console.log('Booking created successfully:', booking);
+      Alert.alert('Success', 'Your booking request has been sent');
+      
+      if (onSuccess) {
+        onSuccess();
+      }
+    } catch (error) {
+      console.error('Error creating booking:', error);
+      setApiError("Failed to create booking. Please check your connection and try again.");
+      Alert.alert('Error', 'Failed to create booking. Please try again.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  // Show error message if API error occurs
+  if (apiError) {
+    return (
+      <ThemedView style={styles.container}>
+        <View style={styles.errorContainer}>
+          <IconSymbol name="exclamationmark.triangle" size={48} color="#FFA500" />
+          <ThemedText style={styles.errorTitle}>Connection Error</ThemedText>
+          <ThemedText style={styles.errorText}>{apiError}</ThemedText>
+          <TouchableFix
+            style={styles.retryButton}
+            onPress={() => {
+              setApiError(null);
+              loadAvailableSlots(selectedDate);
+            }}
+          >
+            <ThemedText style={styles.retryButtonText}>Retry</ThemedText>
+          </TouchableFix>
+          
+          <TouchableFix
+            style={styles.cancelButton}
+            onPress={onCancel}
+          >
+            <ThemedText style={styles.cancelButtonText}>Cancel</ThemedText>
+          </TouchableFix>
+        </View>
+      </ThemedView>
+    );
+  }
+
+  if (loading) {
+    return (
+      <ThemedView style={styles.container}>
+        <ActivityIndicator size="large" color="#007AFF" />
+        <ThemedText style={styles.loadingText}>Loading artist information...</ThemedText>
+      </ThemedView>
+    );
+  }
+
+  return (
+    <ThemedView style={styles.container}>
+      <ThemedText type="subtitle" style={styles.title}>Book an Appointment with {artist?.name}</ThemedText>
+      
+      {/* Date Selection */}
+      <View style={styles.fieldGroup}>
+        <ThemedText>Select Date</ThemedText>
+        <TouchableFix style={styles.dateSelector} onPress={() => setShowDateModal(true)}>
+          <ThemedText>
+            {formatDate(selectedDate)}
+          </ThemedText>
+          <IconSymbol name="calendar" size={20} color="#007AFF" />
+        </TouchableFix>
+        
+        {/* Custom Date Selection Modal */}
+        <Modal
+          visible={showDateModal}
+          transparent={true}
+          animationType="slide"
+          onRequestClose={() => setShowDateModal(false)}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              <View style={styles.modalHeader}>
+                <ThemedText style={styles.modalTitle}>Select Date</ThemedText>
+                <TouchableOpacity
+                  onPress={() => setShowDateModal(false)}
+                  style={styles.closeButton}
+                >
+                  <IconSymbol name="xmark.circle.fill" size={24} color="#999" />
+                </TouchableOpacity>
+              </View>
+              
+              <ScrollView style={styles.dateList}>
+                {dateOptions.map((date, index) => (
+                  <TouchableFix
+                    key={index}
+                    style={[
+                      styles.dateOption,
+                      date.toDateString() === selectedDate.toDateString() && styles.selectedDateOption
+                    ]}
+                    onPress={() => handleDateSelect(date)}
+                  >
+                    <ThemedText
+                      style={[
+                        styles.dateOptionText,
+                        date.toDateString() === selectedDate.toDateString() && styles.selectedDateOptionText
+                      ]}
+                    >
+                      {formatDate(date)}
+                    </ThemedText>
+                  </TouchableFix>
+                ))}
+              </ScrollView>
+            </View>
+          </View>
+        </Modal>
+      </View>
+      
+      {/* Time Slot Selection */}
+      <View style={styles.fieldGroup}>
+        <ThemedText>Select Time</ThemedText>
+        
+        {availableSlots.length > 0 ? (
+          <View style={styles.timeSlotContainer}>
+            {availableSlots.map(slot => (
+              Array.from(
+                { length: slot.endHour - slot.startHour },
+                (_, i) => slot.startHour + i
+              ).map(hour => (
+                <TouchableFix
+                  key={hour}
+                  style={[
+                    styles.timeSlot,
+                    selectedTimeSlot === hour && styles.selectedTimeSlot
+                  ]}
+                  onPress={() => setSelectedTimeSlot(hour)}
+                >
+                  <ThemedText
+                    style={[
+                      styles.timeSlotText,
+                      selectedTimeSlot === hour && styles.selectedTimeSlotText
+                    ]}
+                  >
+                    {getTimeDisplay(hour)}
+                  </ThemedText>
+                </TouchableFix>
+              ))
+            ))}
+          </View>
+        ) : (
+          <ThemedText style={styles.noSlotsText}>
+            No available time slots for this date
+          </ThemedText>
+        )}
+      </View>
+      
+      {/* Duration */}
+      <View style={styles.fieldGroup}>
+        <ThemedText>Duration (minutes)</ThemedText>
+        <TextInput
+          style={styles.input}
+          value={duration}
+          onChangeText={setDuration}
+          keyboardType="numeric"
+          placeholder="Enter duration (e.g., 60)"
+          placeholderTextColor="#777"
+        />
+      </View>
+      
+      {/* Note */}
+      <View style={styles.fieldGroup}>
+        <ThemedText>Note (optional)</ThemedText>
+        <TextInput
+          style={[styles.input, styles.textArea]}
+          value={note}
+          onChangeText={setNote}
+          placeholder="Add any details about your appointment"
+          placeholderTextColor="#777"
+          multiline
+          numberOfLines={4}
+        />
+      </View>
+      
+      {/* Submit Button */}
+      <View style={styles.buttonContainer}>
+        <TouchableFix
+          style={styles.cancelButton}
+          onPress={onCancel}
+          disabled={submitting}
+        >
+          <ThemedText style={styles.cancelButtonText}>Cancel</ThemedText>
+        </TouchableFix>
+        
+        <TouchableFix
+          style={[
+            styles.submitButton,
+            (!selectedTimeSlot || submitting) && styles.disabledButton
+          ]}
+          onPress={handleSubmit}
+          disabled={!selectedTimeSlot || submitting}
+        >
+          {submitting ? (
+            <ActivityIndicator size="small" color="#FFFFFF" />
+          ) : (
+            <ThemedText style={styles.submitButtonText}>Book Appointment</ThemedText>
+          )}
+        </TouchableFix>
+      </View>
+    </ThemedView>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    padding: 16,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 16,
+    textAlign: 'center',
+  },
+  title: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginBottom: 20,
+  },
+  fieldGroup: {
+    marginBottom: 20,
+  },
+  dateSelector: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 12,
+    backgroundColor: '#1f1f1f',
+    borderRadius: 8,
+    marginTop: 8,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 16,
+  },
+  modalContent: {
+    backgroundColor: '#121212',
+    borderRadius: 8,
+    width: '100%',
+    maxHeight: '80%',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#333',
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  closeButton: {
+    padding: 4,
+  },
+  dateList: {
+    padding: 16,
+  },
+  dateOption: {
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 8,
+    backgroundColor: '#1f1f1f',
+  },
+  selectedDateOption: {
+    backgroundColor: '#007AFF',
+  },
+  dateOptionText: {
+    fontSize: 16,
+  },
+  selectedDateOptionText: {
+    fontWeight: 'bold',
+  },
+  timeSlotContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginTop: 8,
+  },
+  timeSlot: {
+    padding: 10,
+    backgroundColor: '#1f1f1f',
+    borderRadius: 8,
+    margin: 4,
+  },
+  selectedTimeSlot: {
+    backgroundColor: '#007AFF',
+  },
+  timeSlotText: {
+    color: '#FFFFFF',
+  },
+  selectedTimeSlotText: {
+    fontWeight: 'bold',
+  },
+  noSlotsText: {
+    marginTop: 8,
+    fontStyle: 'italic',
+    color: '#999',
+  },
+  input: {
+    backgroundColor: '#1f1f1f',
+    borderRadius: 8,
+    padding: 12,
+    color: '#FFFFFF',
+    marginTop: 8,
+  },
+  textArea: {
+    minHeight: 100,
+    textAlignVertical: 'top',
+  },
+  buttonContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 20,
+  },
+  cancelButton: {
+    flex: 1,
+    padding: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#666',
+    marginRight: 8,
+    alignItems: 'center',
+  },
+  cancelButtonText: {
+    color: '#FFFFFF',
+  },
+  submitButton: {
+    flex: 2,
+    padding: 12,
+    borderRadius: 8,
+    backgroundColor: '#007AFF',
+    marginLeft: 8,
+    alignItems: 'center',
+  },
+  disabledButton: {
+    backgroundColor: 'rgba(0, 122, 255, 0.5)',
+  },
+  submitButtonText: {
+    color: '#FFFFFF',
+    fontWeight: 'bold',
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  errorTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  errorText: {
+    textAlign: 'center',
+    marginBottom: 24,
+    color: '#999',
+  },
+  retryButton: {
+    backgroundColor: '#007AFF',
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+    marginBottom: 12,
+    width: '100%',
+    alignItems: 'center',
+  },
+  retryButtonText: {
+    color: 'white',
+    fontWeight: 'bold',
+  },
+});

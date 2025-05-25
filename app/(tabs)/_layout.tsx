@@ -1,4 +1,4 @@
-import { Tabs } from 'expo-router'; // Changed from Stack
+import { Tabs } from 'expo-router';
 import React from 'react';
 // import { View, StyleSheet } from 'react-native'; // Removed
 // import { useSafeAreaInsets } from 'react-native-safe-area-context'; // Removed
@@ -19,11 +19,15 @@ export default function TabLayout() {
   return (
     // <View style={[styles.container, { paddingBottom: insets.bottom }]}> // View wrapper removed
       
-      <Tabs // Changed from Stack
+      <Tabs
         screenOptions={{
-          headerShown: true, // Ensure header is shown to display the hamburger menu
-          tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
-          headerLeft: () => <HamburgerMenu />, // Add HamburgerMenu to the left of the header
+          headerShown: true,
+          tabBarStyle: { display: 'none' }, // Hide the bottom tab bar
+          headerLeft: () => <HamburgerMenu />,
+          headerTitle: '',
+          headerStyle: {
+            backgroundColor: colorScheme === 'dark' ? '#000' : '#fff',
+          },
         }}
       >
         <Tabs.Screen name="explore" />
