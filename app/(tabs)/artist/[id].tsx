@@ -9,6 +9,7 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
 import * as artistService from '@/services/artist.service';
 import * as reviewService from '@/services/review.service';
+import * as messageService from '@/services/message.service';
 import { Artist } from '@/types/artist';
 import { PortfolioItem } from '@/types/portfolio';
 import { ReviewStatsResponse } from '@/types/review';
@@ -109,6 +110,54 @@ export default function ArtistDetailScreen() {
     }
     
     setShowBookingForm(true);
+  };
+  
+  const handleMessagePress = async () => {
+    if (!isAuthenticated) {
+      Alert.alert(
+        'Login Required', 
+        'Please log in to send a message',
+        [
+          {
+            text: 'Cancel',
+            style: 'cancel'
+          },
+          {
+            text: 'Go to Login',
+            onPress: () => router.push('/login')
+          }
+        ]
+      );
+      return;
+    }
+    
+    if (!artist) {
+      return;
+    }
+    
+    // Check if user is trying to message themselves
+    if (user && user.id === artist.id) {
+      Alert.alert('Error', 'You cannot message yourself');
+      return;
+    }
+
+    try {
+      // Start conversation with the artist
+      const conversation = await messageService.startConversation(artist.id);
+      
+      // Try to navigate to the chat screen
+      try {
+        const chatPath = `/chat/${conversation.id}?otherUserId=${artist.id}&otherUserName=${encodeURIComponent(artist.name)}`;
+        router.push(chatPath as any);
+      } catch (navigationError) {
+        // Fallback: navigate to messages tab where they can see the conversation
+        console.log('Chat screen navigation failed, going to messages tab');
+        router.push('/(tabs)/messages');
+      }
+    } catch (error) {
+      console.error('Error starting conversation:', error);
+      Alert.alert('Error', 'Failed to start conversation');
+    }
   };
   
   const formatSpecialties = (specialties: string[]) => {
@@ -270,14 +319,24 @@ export default function ArtistDetailScreen() {
           )}
         </View>
         
-        {/* Book button */}
-        <TouchableFix 
-          style={styles.bookButton}
-          onPress={handleBookPress}
-        >
-          <IconSymbol name="calendar.badge.plus" size={20} color="#FFFFFF" />
-          <ThemedText style={styles.bookButtonText}>Book Appointment</ThemedText>
-        </TouchableFix>
+        {/* Action buttons */}
+        <View style={styles.actionButtonsContainer}>
+          <TouchableFix 
+            style={styles.bookButton}
+            onPress={handleBookPress}
+          >
+            <IconSymbol name="calendar.badge.plus" size={20} color="#FFFFFF" />
+            <ThemedText style={styles.bookButtonText}>Book Appointment</ThemedText>
+          </TouchableFix>
+
+          <TouchableFix 
+            style={styles.messageButton}
+            onPress={handleMessagePress}
+          >
+            <IconSymbol name="message" size={20} color="#007AFF" />
+            <ThemedText style={styles.messageButtonText}>Send Message</ThemedText>
+          </TouchableFix>
+        </View>
       </ScrollView>
       
       {/* Booking Form Modal */}
@@ -456,19 +515,46 @@ const styles = StyleSheet.create({
     color: '#999999',
     marginTop: 8,
   },
+  actionButtonsContainer: {
+    paddingHorizontal: 16,
+    paddingBottom: 32,
+    paddingTop: 8,
+    gap: 12,
+  },
   bookButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#007AFF',
-    margin: 16,
-    marginTop: 8,
-    padding: 14,
-    borderRadius: 8,
+    padding: 16,
+    borderRadius: 12,
+    minHeight: 54,
+    elevation: 2,
+    shadowColor: '#007AFF',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
   },
   bookButtonText: {
     color: '#FFFFFF',
-    fontWeight: 'bold',
+    fontWeight: '600',
+    fontSize: 16,
+    marginLeft: 8,
+  },
+  messageButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#1A1A1A',
+    borderWidth: 1.5,
+    borderColor: '#007AFF',
+    padding: 16,
+    borderRadius: 12,
+    minHeight: 54,
+  },
+  messageButtonText: {
+    color: '#007AFF',
+    fontWeight: '600',
     fontSize: 16,
     marginLeft: 8,
   },
