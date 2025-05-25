@@ -7,10 +7,12 @@ import {
   TouchableOpacity, 
   Alert,
   KeyboardAvoidingView,
-  Platform
+  Platform,
+  AppState,
+  RefreshControl
 } from 'react-native';
 import { Image } from 'expo-image';
-import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { ThemedView } from '@/components/ThemedView';
 import { ThemedText } from '@/components/ThemedText';
 import { IconSymbol } from '@/components/ui/IconSymbol';
@@ -26,34 +28,112 @@ export default function ChatScreen() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [sending, setSending] = useState(false);
   const flatListRef = useRef<FlatList>(null);
+  const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const lastMessageCountRef = useRef(0);
+  const isScreenFocused = useRef(false);
+
+  // Use focus effect to control polling
+  useFocusEffect(
+    React.useCallback(() => {
+      isScreenFocused.current = true;
+      if (conversationId && typeof conversationId === 'string') {
+        loadMessages();
+        markMessagesAsRead();
+        startMessagePolling();
+      }
+
+      return () => {
+        isScreenFocused.current = false;
+        stopMessagePolling();
+      };
+    }, [conversationId])
+  );
 
   useEffect(() => {
-    if (conversationId && typeof conversationId === 'string') {
-      loadMessages();
-      markMessagesAsRead();
-    }
-  }, [conversationId]);
+    // Listen for app state changes
+    const handleAppStateChange = (nextAppState: string) => {
+      if (nextAppState === 'active' && isScreenFocused.current) {
+        // App came to foreground, refresh messages
+        loadMessages(false);
+        markMessagesAsRead();
+      }
+    };
 
-  const loadMessages = async () => {
+    const subscription = AppState.addEventListener('change', handleAppStateChange);
+
+    return () => {
+      subscription?.remove();
+      stopMessagePolling();
+    };
+  }, []);
+
+  const startMessagePolling = () => {
+    // Only poll if screen is focused
+    if (!isScreenFocused.current || !conversationId) return;
+    
+    // Clear any existing interval
+    stopMessagePolling();
+    
+    // Poll for new messages every 5 seconds (less frequent than before)
+    pollIntervalRef.current = setInterval(() => {
+      if (isScreenFocused.current && typeof conversationId === 'string') {
+        loadMessages(false);
+      } else {
+        stopMessagePolling();
+      }
+    }, 5000);
+  };
+
+  const stopMessagePolling = () => {
+    if (pollIntervalRef.current) {
+      clearInterval(pollIntervalRef.current);
+      pollIntervalRef.current = null;
+    }
+  };
+
+  const loadMessages = async (showLoading = true) => {
     try {
-      setLoading(true);
+      if (showLoading) {
+        setLoading(true);
+      }
+      
       if (typeof conversationId === 'string') {
         const response = await messageService.getConversationMessages(conversationId);
-        setMessages(response.messages);
+        const newMessages = response.messages;
         
-        // Scroll to bottom after loading
-        setTimeout(() => {
-          flatListRef.current?.scrollToEnd({ animated: false });
-        }, 100);
+        // Only update if there are new messages
+        if (newMessages.length !== lastMessageCountRef.current) {
+          setMessages(newMessages);
+          lastMessageCountRef.current = newMessages.length;
+          
+          // Auto-scroll to bottom only if there are new messages and we're not manually refreshing
+          if (!refreshing && newMessages.length > messages.length) {
+            setTimeout(() => {
+              flatListRef.current?.scrollToEnd({ animated: true });
+            }, 100);
+          }
+        }
       }
     } catch (error) {
       console.error('Error loading messages:', error);
-      Alert.alert('Error', 'Failed to load messages');
+      if (showLoading) {
+        Alert.alert('Error', 'Failed to load messages');
+      }
     } finally {
-      setLoading(false);
+      if (showLoading) {
+        setLoading(false);
+      }
+      setRefreshing(false);
     }
+  };
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await loadMessages(false);
+    await markMessagesAsRead();
   };
 
   const markMessagesAsRead = async () => {
@@ -77,8 +157,12 @@ export default function ChatScreen() {
         messageType: 'text'
       });
 
-      // Add message to local state
-      setMessages(prev => [...prev, message]);
+      // Add message to local state immediately
+      setMessages(prev => {
+        const newMessages = [...prev, message];
+        lastMessageCountRef.current = newMessages.length;
+        return newMessages;
+      });
       setNewMessage('');
       
       // Scroll to bottom
@@ -168,6 +252,12 @@ export default function ChatScreen() {
           contentContainerStyle={styles.messagesList}
           ListEmptyComponent={!loading ? EmptyState : null}
           onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={handleRefresh}
+            />
+          }
         />
 
         {/* Message Input */}

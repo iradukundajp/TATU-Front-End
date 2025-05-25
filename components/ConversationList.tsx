@@ -14,85 +14,98 @@ interface ConversationListProps {
 }
 
 export const ConversationList: React.FC<ConversationListProps> = ({
-  conversations,
+  conversations = [],
   onConversationPress,
   onRefresh,
   refreshing = false,
 }) => {
   
   const formatTime = (dateString: string) => {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffInHours = (now.getTime() - date.getTime()) / (1000 * 60 * 60);
+    if (!dateString) return '';
     
-    if (diffInHours < 24) {
-      return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    } else if (diffInHours < 168) { // 7 days
-      return date.toLocaleDateString([], { weekday: 'short' });
-    } else {
-      return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
+    try {
+      const date = new Date(dateString);
+      const now = new Date();
+      const diffInHours = (now.getTime() - date.getTime()) / (1000 * 60 * 60);
+      
+      if (diffInHours < 24) {
+        return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      } else if (diffInHours < 168) { // 7 days
+        return date.toLocaleDateString([], { weekday: 'short' });
+      } else {
+        return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
+      }
+    } catch (error) {
+      console.error('Error formatting time:', error);
+      return '';
     }
   };
 
-  const renderConversationItem = ({ item }: { item: Conversation }) => (
-    <TouchableOpacity
-      style={styles.conversationItem}
-      onPress={() => onConversationPress(item)}
-      activeOpacity={0.7}
-    >
-      <View style={styles.avatarContainer}>
-        {item.otherUser.avatarUrl ? (
-          <Image 
-            source={{ uri: item.otherUser.avatarUrl }} 
-            style={styles.avatar}
-            contentFit="cover"
-          />
-        ) : (
-          <View style={styles.avatarPlaceholder}>
-            <IconSymbol name="person.fill" size={24} color="#AAAAAA" />
-          </View>
-        )}
-        {item.otherUser.isArtist && (
-          <View style={styles.artistBadge}>
-            <IconSymbol name="paintbrush.fill" size={10} color="#FFFFFF" />
-          </View>
-        )}
-      </View>
+  const renderConversationItem = ({ item }: { item: Conversation }) => {
+    if (!item || !item.otherUser) {
+      return null; // Skip invalid items
+    }
 
-      <View style={styles.conversationInfo}>
-        <View style={styles.headerRow}>
-          <ThemedText style={styles.userName} numberOfLines={1}>
-            {item.otherUser.name}
-          </ThemedText>
-          <ThemedText style={styles.timestamp}>
-            {formatTime(item.lastMessageAt)}
-          </ThemedText>
-        </View>
-        
-        <View style={styles.messageRow}>
-          <ThemedText 
-            style={[
-              styles.lastMessage,
-              item.unreadCount > 0 && styles.unreadMessage
-            ]} 
-            numberOfLines={1}
-          >
-            {item.lastMessage 
-              ? `${item.lastMessage.sender.id === item.otherUser.id ? '' : 'You: '}${item.lastMessage.content}`
-              : 'No messages yet'
-            }
-          </ThemedText>
-          {item.unreadCount > 0 && (
-            <View style={styles.unreadBadge}>
-              <ThemedText style={styles.unreadCount}>
-                {item.unreadCount > 99 ? '99+' : item.unreadCount}
-              </ThemedText>
+    return (
+      <TouchableOpacity
+        style={styles.conversationItem}
+        onPress={() => onConversationPress(item)}
+        activeOpacity={0.7}
+      >
+        <View style={styles.avatarContainer}>
+          {item.otherUser.avatarUrl ? (
+            <Image 
+              source={{ uri: item.otherUser.avatarUrl }} 
+              style={styles.avatar}
+              contentFit="cover"
+            />
+          ) : (
+            <View style={styles.avatarPlaceholder}>
+              <IconSymbol name="person.fill" size={24} color="#AAAAAA" />
+            </View>
+          )}
+          {item.otherUser.isArtist && (
+            <View style={styles.artistBadge}>
+              <IconSymbol name="paintbrush.fill" size={10} color="#FFFFFF" />
             </View>
           )}
         </View>
-      </View>
-    </TouchableOpacity>
-  );
+
+        <View style={styles.conversationInfo}>
+          <View style={styles.headerRow}>
+            <ThemedText style={styles.userName} numberOfLines={1}>
+              {item.otherUser.name || 'Unknown User'}
+            </ThemedText>
+            <ThemedText style={styles.timestamp}>
+              {formatTime(item.lastMessageAt)}
+            </ThemedText>
+          </View>
+          
+          <View style={styles.messageRow}>
+            <ThemedText 
+              style={[
+                styles.lastMessage,
+                (item.unreadCount || 0) > 0 && styles.unreadMessage
+              ]} 
+              numberOfLines={1}
+            >
+              {item.lastMessage 
+                ? `${item.lastMessage.sender?.id === item.otherUser.id ? '' : 'You: '}${item.lastMessage.content || ''}`
+                : 'No messages yet'
+              }
+            </ThemedText>
+            {(item.unreadCount || 0) > 0 && (
+              <View style={styles.unreadBadge}>
+                <ThemedText style={styles.unreadCount}>
+                  {item.unreadCount > 99 ? '99+' : item.unreadCount}
+                </ThemedText>
+              </View>
+            )}
+          </View>
+        </View>
+      </TouchableOpacity>
+    );
+  };
 
   const EmptyState = () => (
     <View style={styles.emptyState}>

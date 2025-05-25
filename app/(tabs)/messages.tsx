@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { StyleSheet, Alert, View } from 'react-native';
-import { router } from 'expo-router';
+import React, { useState, useEffect, useRef } from 'react';
+import { StyleSheet, Alert, View, AppState } from 'react-native';
+import { router, useFocusEffect } from 'expo-router';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { ConversationList } from '@/components/ConversationList';
@@ -15,30 +15,88 @@ export default function MessagesScreen() {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const isScreenFocused = useRef(false);
+
+  // Use focus effect to control polling
+  useFocusEffect(
+    React.useCallback(() => {
+      isScreenFocused.current = true;
+      if (isAuthenticated) {
+        loadConversations();
+        startConversationPolling();
+      }
+
+      return () => {
+        isScreenFocused.current = false;
+        stopConversationPolling();
+      };
+    }, [isAuthenticated])
+  );
 
   useEffect(() => {
-    if (isAuthenticated) {
-      loadConversations();
-    }
+    // Listen for app state changes
+    const handleAppStateChange = (nextAppState: string) => {
+      if (nextAppState === 'active' && isAuthenticated && isScreenFocused.current) {
+        loadConversations(false);
+      }
+    };
+
+    const subscription = AppState.addEventListener('change', handleAppStateChange);
+
+    return () => {
+      subscription?.remove();
+      stopConversationPolling();
+    };
   }, [isAuthenticated]);
 
-  const loadConversations = async () => {
+  const startConversationPolling = () => {
+    // Only poll if screen is focused and user is authenticated
+    if (!isScreenFocused.current || !isAuthenticated) return;
+    
+    // Clear any existing interval
+    stopConversationPolling();
+    
+    // Poll for conversation updates every 10 seconds (less frequent)
+    pollIntervalRef.current = setInterval(() => {
+      if (isAuthenticated && isScreenFocused.current) {
+        loadConversations(false);
+      } else {
+        stopConversationPolling();
+      }
+    }, 10000);
+  };
+
+  const stopConversationPolling = () => {
+    if (pollIntervalRef.current) {
+      clearInterval(pollIntervalRef.current);
+      pollIntervalRef.current = null;
+    }
+  };
+
+  const loadConversations = async (showLoading = true) => {
     try {
-      setLoading(true);
+      if (showLoading) {
+        setLoading(true);
+      }
       const data = await messageService.getUserConversations();
       setConversations(data);
     } catch (error) {
       console.error('Error loading conversations:', error);
-      Alert.alert('Error', 'Failed to load conversations');
+      if (showLoading) {
+        Alert.alert('Error', 'Failed to load conversations');
+      }
     } finally {
-      setLoading(false);
+      if (showLoading) {
+        setLoading(false);
+      }
+      setRefreshing(false);
     }
   };
 
   const handleRefresh = async () => {
     setRefreshing(true);
-    await loadConversations();
-    setRefreshing(false);
+    await loadConversations(false);
   };
 
   const handleConversationPress = (conversation: Conversation) => {
@@ -53,9 +111,24 @@ export default function MessagesScreen() {
     router.push(artistsPath as any);
   };
 
+  const handleBackPress = () => {
+    router.back();
+  };
+
   if (!isAuthenticated) {
     return (
       <ThemedView style={styles.container}>
+        <View style={styles.header}>
+          <TouchableOpacity 
+            style={styles.backButton}
+            onPress={handleBackPress}
+          >
+            <IconSymbol name="chevron.left" size={24} color="#FFFFFF" />
+          </TouchableOpacity>
+          <ThemedText style={styles.headerTitle}>Messages</ThemedText>
+          <View style={styles.placeholder} />
+        </View>
+        
         <View style={styles.notAuthenticatedContainer}>
           <IconSymbol name="lock.fill" size={64} color="#555555" />
           <ThemedText style={styles.notAuthenticatedTitle}>Login Required</ThemedText>
@@ -76,6 +149,17 @@ export default function MessagesScreen() {
   if (loading) {
     return (
       <ThemedView style={styles.container}>
+        <View style={styles.header}>
+          <TouchableOpacity 
+            style={styles.backButton}
+            onPress={handleBackPress}
+          >
+            <IconSymbol name="chevron.left" size={24} color="#FFFFFF" />
+          </TouchableOpacity>
+          <ThemedText style={styles.headerTitle}>Messages</ThemedText>
+          <View style={styles.placeholder} />
+        </View>
+        
         <View style={styles.loadingContainer}>
           <IconSymbol name="ellipsis" size={32} color="#007AFF" />
           <ThemedText style={styles.loadingText}>Loading conversations...</ThemedText>
@@ -87,6 +171,12 @@ export default function MessagesScreen() {
   return (
     <ThemedView style={styles.container}>
       <View style={styles.header}>
+        <TouchableOpacity 
+          style={styles.backButton}
+          onPress={handleBackPress}
+        >
+          <IconSymbol name="chevron.left" size={24} color="#FFFFFF" />
+        </TouchableOpacity>
         <ThemedText style={styles.headerTitle}>Messages</ThemedText>
         <TouchableOpacity 
           style={styles.newMessageButton}
@@ -117,6 +207,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 12,
+    paddingTop: 50,
     borderBottomWidth: 1,
     borderBottomColor: '#333333',
   },
@@ -124,6 +215,8 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: 'bold',
     color: '#FFFFFF',
+    flex: 1,
+    textAlign: 'center',
   },
   newMessageButton: {
     padding: 8,
@@ -168,5 +261,12 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#AAAAAA',
     marginTop: 16,
+  },
+  backButton: {
+    padding: 8,
+  },
+  placeholder: {
+    width: 24,
+    height: 24,
   },
 });
