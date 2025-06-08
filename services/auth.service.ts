@@ -1,9 +1,7 @@
 import * as SecureStore from 'expo-secure-store';
 import { Platform } from 'react-native';
 import { User, LoginResponse, RegisterUserData, UpdateProfileData, UpdatePasswordData } from '../types/auth';
-import { AvatarConfiguration } from '../types/avatar'; // Import AvatarConfiguration
-// Import the apiRequest from api.service.ts and rename the local one
-import { apiRequest as authenticatedApiRequest } from './api.service'; 
+import { AvatarConfiguration } from '../types/avatar'; // Added import
 
 // Constants for storage keys
 const TOKEN_KEY = 'tatu_auth_token';
@@ -59,8 +57,8 @@ export const storage = {
   }
 };
 
-// Helper function for API requests that don't require a token (local to this file)
-const localApiRequest = async <T>(endpoint: string, options: RequestInit = {}): Promise<T> => {
+// Helper function for API requests that don't require a token
+const apiRequest = async <T>(endpoint: string, options: RequestInit = {}): Promise<T> => {
   if (!API_BASE_URL) {
     throw new Error('API_BASE_URL is not configured');
   }
@@ -94,7 +92,7 @@ const localApiRequest = async <T>(endpoint: string, options: RequestInit = {}): 
  */
 export const register = async (userData: RegisterUserData): Promise<LoginResponse> => {
   try {
-    const data = await localApiRequest<LoginResponse>('/api/auth/register', { // Use localApiRequest
+    const data = await apiRequest<LoginResponse>('/api/auth/register', {
       method: 'POST',
       body: JSON.stringify(userData)
     });
@@ -116,7 +114,7 @@ export const register = async (userData: RegisterUserData): Promise<LoginRespons
  */
 export const login = async (email: string, password: string): Promise<LoginResponse> => {
   try {
-    const data = await localApiRequest<LoginResponse>( // Use localApiRequest
+    const data = await apiRequest<LoginResponse>(
       '/api/auth/login', 
       { 
         method: 'POST',
@@ -230,7 +228,6 @@ export const updateUserData = async (userData: Partial<User>): Promise<void> => 
 };
 
 // For non-auth operations, import the api from api.service
-// This import is fine as 'api' is a different object.
 import { api } from './api.service';
 
 /**
@@ -291,21 +288,18 @@ export const uploadAvatar = async (formData: FormData): Promise<User> => {
 };
 
 /**
- * Update user's avatar configuration
- * @param config - The new avatar configuration
- * @returns Promise with the updated user object
+ * Update user avatar configuration via API
+ * @param config - Avatar configuration data
+ * @returns Promise with the updated user
  */
 export const updateAvatarConfiguration = async (config: AvatarConfiguration): Promise<User> => {
   try {
-    // Use the imported apiRequest (renamed to authenticatedApiRequest) which handles auth
-    const data = await authenticatedApiRequest<User>('/api/users/profile/avatar-configuration', {
-      method: 'PUT',
-      body: JSON.stringify(config),
-      // The requiresAuth option is handled by the apiRequest in api.service.ts
-    });
-    // Update local user data cache
-    await updateUserData(data);
-    return data;
+    const user = await api.put<User>('/api/users/profile/avatar-configuration', config);
+    
+    // Update local storage
+    await updateUserData(user);
+    
+    return user;
   } catch (error) {
     console.error('Error updating avatar configuration:', error);
     throw error;

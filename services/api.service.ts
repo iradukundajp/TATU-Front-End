@@ -193,4 +193,70 @@ export const api = {
    */
   delete: <T = any>(endpoint: string, options: RequestOptions = {}) =>
     apiRequest<T>(endpoint, { ...options, method: 'DELETE' }),
-}; 
+
+  /**
+   * Upload a custom tattoo image
+   * @param endpoint - The API endpoint (should be '/profile/custom-tattoo')
+   * @param formData - The FormData object containing the image
+   * @param options - Request options
+   * @returns Promise with the response data (filePath, filename)
+   */
+  uploadFile: async <T = any>(endpoint: string, formData: FormData, options: RequestOptions = {}): Promise<T> => {
+    if (!API_BASE_URL) {
+      throw new Error('API_BASE_URL is not configured. Please check your environment variables.');
+    }
+    const url = `${API_BASE_URL}${endpoint}`;
+    
+    const headers = new Headers(options.headers);
+    if (options.requiresAuth !== false) { // Default to true if not specified
+      const token = await getToken();
+      if (token) {
+        headers.set('Authorization', `Bearer ${token}`);
+      } else {
+        throw new ApiError('Authentication required for file upload', 401);
+      }
+    }
+
+    // Do not set Content-Type for FormData, browser will do it with boundary
+    // headers.delete('Content-Type'); 
+
+    console.log(`API File Upload: POST ${endpoint}`);
+
+    try {
+      const response = await fetch(url, {
+        method: 'POST',
+        body: formData,
+        headers,
+        ...options, // Spread other options like signal for cancellation
+      });
+
+      let data;
+      const contentType = response.headers.get('Content-Type');
+      if (contentType && contentType.includes('application/json')) {
+        data = await response.json();
+      } else {
+        data = await response.text(); // Or handle as blob/arrayBuffer if needed
+      }
+
+      console.log(`API File Upload Response (${response.status}):`, data);
+
+      if (!response.ok) {
+        throw new ApiError(
+          (data as any)?.message || `API error: ${response.status}`,
+          response.status,
+          data
+        );
+      }
+      return data as T;
+    } catch (error) {
+      console.error('File upload error:', error);
+      if (error instanceof ApiError) {
+        throw error;
+      }
+      throw new ApiError(
+        error instanceof Error ? error.message : 'Unknown error during file upload',
+        500
+      );
+    }
+  }
+};

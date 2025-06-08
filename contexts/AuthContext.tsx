@@ -2,10 +2,27 @@ import React, { createContext, useState, useContext, useEffect, ReactNode } from
 import { router } from 'expo-router';
 import { Platform } from 'react-native';
 import * as authService from '../services/auth.service';
-import { AuthState, User, RegisterUserData, LoginResponse, UpdateProfileData, UpdatePasswordData } from '../types/auth';
-import { AvatarConfiguration } from '../types/avatar'; // Import AvatarConfiguration
+import { User, RegisterUserData, LoginResponse, UpdateProfileData, UpdatePasswordData } from '../types/auth';
+import { AvatarConfiguration } from '../types/avatar';
 
-// Create the auth context with proper typing
+// Define AuthState interface directly in this file
+export interface AuthState {
+  user: User | null;
+  token: string | null;
+  loading: boolean;
+  isAuthenticated: boolean;
+  isArtist: () => boolean; // Changed to a function type
+  login: (email: string, password: string) => Promise<LoginResponse>;
+  register: (userData: RegisterUserData) => Promise<LoginResponse>;
+  logout: () => Promise<void>;
+  updateUser: (userData: Partial<User>) => Promise<void>;
+  updateProfile: (profileData: UpdateProfileData) => Promise<User>;
+  updatePassword: (passwordData: UpdatePasswordData) => Promise<any>; 
+  uploadAvatar: (formData: FormData) => Promise<User>;
+  updateAvatarConfiguration: (config: AvatarConfiguration) => Promise<User>;
+  fetchUser: () => Promise<void>; // Added fetchUser here
+}
+
 const AuthContext = createContext<AuthState | null>(null);
 
 interface AuthProviderProps {
@@ -17,21 +34,34 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [token, setToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Initialize auth state from storage
+  const fetchUser = async () => {
+    console.log("AuthContext: fetchUser called");
+    try {
+      const currentUserData = await authService.getCurrentUser();
+      console.log('AuthContext fetchUser: Fetched user data:', JSON.stringify(currentUserData, null, 2));
+      if (currentUserData) {
+        setUser(currentUserData as User);
+      }
+    } catch (error) {
+      console.error('Error fetching user data in fetchUser:', error);
+    }
+  };
+
   useEffect(() => {
     const loadUserData = async () => {
+      setLoading(true);
       try {
         const storedToken = await authService.getToken();
-        const userData = await authService.getCurrentUser();
-        console.log('AuthContext useEffect: Loaded user data from storage:', JSON.stringify(userData, null, 2)); // Existing log
-        console.log('AuthContext useEffect: avatarConfiguration from storage:', userData ? userData.avatarConfiguration : 'userData is null'); // Added log for avatarConfiguration
-        
-        if (storedToken && userData) {
+        if (storedToken) {
           setToken(storedToken);
-          setUser(userData as User);
+          await fetchUser(); 
+        } else {
+          setUser(null); 
         }
       } catch (error) {
         console.error('Error loading auth data:', error);
+        setUser(null);
+        setToken(null);
       } finally {
         setLoading(false);
       }
@@ -40,11 +70,9 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     loadUserData();
   }, []);
 
-  // Login function
   const login = async (email: string, password: string) => {
     try {
       const response = await authService.login(email, password) as LoginResponse;
-      console.log('AuthContext login: User data from authService.login:', JSON.stringify(response.user, null, 2)); // Added log
       setUser(response.user);
       setToken(response.token);
       return response;
@@ -53,11 +81,9 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     }
   };
 
-  // Register function
   const register = async (userData: RegisterUserData) => {
     try {
       const response = await authService.register(userData) as LoginResponse;
-      console.log('AuthContext register: User data from authService.register:', JSON.stringify(response.user, null, 2)); // Added log
       setUser(response.user);
       setToken(response.token);
       return response;
@@ -66,43 +92,21 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     }
   };
 
-  // Logout function
   const logout = async () => {
-    console.log('Logout function called');
     try {
-      console.log('Clearing auth data...');
       await authService.logout();
-      console.log('Auth data cleared, updating state');
-      
-      // Clear state first
       setUser(null);
       setToken(null);
-      
-      console.log('Redirecting to login screen');
-      // Use a more direct approach for navigation
       if (Platform.OS === 'web') {
-        // For web, use direct navigation 
         window.location.href = '/login';
       } else {
-        // For native, directly navigate to login
-        try {
-          router.navigate('/login');
-        } catch (navError) {
-          console.error('Navigation error:', navError);
-          // Fallback if router.navigate fails
-          try {
-            router.replace('/login');
-          } catch (replaceError) {
-            console.error('Replace navigation error:', replaceError);
-          }
-        }
+        router.replace('/login');
       }
     } catch (error) {
       console.error('Logout error:', error);
     }
   };
 
-  // Update user data locally
   const updateUser = async (userData: Partial<User>) => {
     try {
       if (!user) return;
@@ -114,7 +118,6 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     }
   };
 
-  // Update profile via API
   const updateProfile = async (profileData: UpdateProfileData) => {
     try {
       const updatedUser = await authService.updateProfile(profileData);
@@ -126,7 +129,6 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     }
   };
 
-  // Update password via API
   const updatePassword = async (passwordData: UpdatePasswordData) => {
     try {
       return await authService.updatePassword(passwordData);
@@ -136,7 +138,6 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     }
   };
 
-  // Upload avatar via API
   const uploadAvatar = async (formData: FormData) => {
     try {
       const updatedUser = await authService.uploadAvatar(formData);
@@ -148,12 +149,10 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     }
   };
 
-  // Update avatar configuration via API
   const updateAvatarConfiguration = async (config: AvatarConfiguration) => {
     try {
       const updatedUser = await authService.updateAvatarConfiguration(config);
       setUser(updatedUser);
-      // Optionally, update local storage as well if you rely on it for quick reloads
       await authService.updateUserData(updatedUser);
       return updatedUser;
     } catch (error) {
@@ -162,18 +161,16 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     }
   };
 
-  // Check if user is an artist
   const isArtist = () => {
-    return user?.isArtist === true;
+    return user?.isArtist === true; // Uses isArtist field from User type
   };
 
-  // Value object to be provided to consumers
   const authContextValue: AuthState = {
     user,
     token,
     loading,
     isAuthenticated: !!token,
-    isArtist: isArtist(), // Corrected: call isArtist as a function
+    isArtist, // isArtist is now a function
     login,
     register,
     logout,
@@ -181,7 +178,8 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     updateProfile,
     updatePassword,
     uploadAvatar,
-    updateAvatarConfiguration, // Added this line
+    updateAvatarConfiguration,
+    fetchUser, 
   };
 
   return (
@@ -191,11 +189,10 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   );
 };
 
-// Custom hook to use the auth context
 export const useAuth = (): AuthState => {
   const context = useContext(AuthContext);
   if (!context) {
     throw new Error('useAuth must be used within an AuthProvider');
   }
-  return context; // Ensure the context is returned
+  return context;
 };

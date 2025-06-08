@@ -33,8 +33,8 @@ export default function TabLayout() {
         <Tabs.Screen name="explore" />
         <Tabs.Screen name="tattoos" />
         <Tabs.Screen name="bookings" />
-        {isArtist && <Tabs.Screen name="portfolio" />}
-        {isArtist && <Tabs.Screen name="manage-bookings" />}
+        {isArtist() && <Tabs.Screen name="portfolio" />}
+        {isArtist() && <Tabs.Screen name="manage-bookings" />}
         <Tabs.Screen name="profile" />
         <Tabs.Screen name="messages" />
       </Tabs>
