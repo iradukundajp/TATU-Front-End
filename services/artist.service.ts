@@ -11,9 +11,34 @@ import * as bookingService from './booking.service';
  */
 export const searchArtists = async (params?: ArtistSearchParams): Promise<Artist[]> => {
   try {
-    // Fixed: Use /api/users endpoint with isArtist filter
-    const searchParams = { ...params, isArtist: true };
-    return await api.get<Artist[]>('/api/users', { params: searchParams });
+    const apiParams: Record<string, any> = { isArtist: true };
+    if (params?.name) {
+      apiParams.search = params.name;
+    }
+    if (params?.location) {
+      apiParams.location = params.location;
+    }
+    if (params?.specialty) {
+      apiParams.specialty = params.specialty;
+    }
+    if (params?.style) {
+      apiParams.style = params.style;
+    }
+    if (params?.minRating) {
+      apiParams.minRating = params.minRating;
+    }
+    if (params?.page) {
+      apiParams.page = params.page;
+    }
+    if (params?.limit) {
+      apiParams.limit = params.limit;
+    }
+
+    console.log('Searching artists with params:', apiParams);
+    // The API /api/users returns an object { users: Artist[], pagination: ... }
+    // We need to extract the users array.
+    const response = await api.get<{ users: Artist[], pagination: any }>('/api/users', { params: apiParams });
+    return response.users; // Return the array of artists directly
   } catch (error) {
     console.error('Error searching artists:', error);
     throw error;

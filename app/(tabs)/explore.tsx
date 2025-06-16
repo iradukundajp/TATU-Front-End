@@ -86,6 +86,8 @@ export default function ExploreScreen() {
     <ArtistCard
       artist={item}
       onPress={handleArtistPress}
+      showBookingButton={false} // Explicitly hide Book Appointment button
+      showSendMessageButton={true} // Keep Send Message button visible
     />
   );
 

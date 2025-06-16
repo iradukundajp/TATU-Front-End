@@ -22,10 +22,11 @@ export interface Availability {
 }
 
 export interface ArtistSearchParams {
+  name?: string; // Added to allow searching by name
   location?: string;
   specialty?: string;
   style?: string;
   minRating?: number;
   page?: number;
   limit?: number;
-} 
+}

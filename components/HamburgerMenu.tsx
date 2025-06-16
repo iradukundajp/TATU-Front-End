@@ -113,7 +113,7 @@ export function HamburgerMenu() {
                 onPress={() => navigateTo('/(tabs)/tattoos')}
               />
               
-              {isAuthenticated && !isArtist && (
+              {isAuthenticated && !isArtist() && (
                 <MenuItem 
                   icon="calendar" 
                   label="Bookings" 
@@ -122,7 +122,7 @@ export function HamburgerMenu() {
                 />
               )}
               
-              {isArtist && (
+              {isArtist() && (
                 <>
                   <MenuItem 
                     icon="photo.on.rectangle" 
@@ -246,4 +246,4 @@ const styles = StyleSheet.create({
     borderTopColor: '#333',
     paddingTop: 25,
   },
-}); 
+});

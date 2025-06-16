@@ -7,20 +7,26 @@ import { IconSymbol } from '@/components/ui/IconSymbol';
 import { Artist } from '@/types/artist';
 import { ReviewStatsResponse } from '@/types/review';
 import * as reviewService from '@/services/review.service';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface ArtistCardProps {
   artist: Artist;
   onPress: (artistId: string) => void;
   style?: any;
+  showBookingButton?: boolean; // New prop
+  showSendMessageButton?: boolean; // New prop to control Send Message button
 }
 
 export const ArtistCard: React.FC<ArtistCardProps> = ({
   artist,
   onPress,
   style,
+  showBookingButton = true, // Default to true
+  showSendMessageButton = true, // Default to true
 }) => {
   const [reviewStats, setReviewStats] = useState<ReviewStatsResponse | null>(null);
   const [loadingStats, setLoadingStats] = useState(true);
+  const { user: loggedInUser } = useAuth(); // Get the logged-in user
 
   useEffect(() => {
     fetchReviewStats();
@@ -32,7 +38,6 @@ export const ArtistCard: React.FC<ArtistCardProps> = ({
       setReviewStats(stats);
     } catch (error) {
       console.error('Error fetching review stats for artist:', artist.id, error);
-      // If API call fails, fall back to artist data or show no rating
       setReviewStats(null);
     } finally {
       setLoadingStats(false);
@@ -41,6 +46,17 @@ export const ArtistCard: React.FC<ArtistCardProps> = ({
 
   const displayRating = reviewStats?.averageRating || artist.rating || 0;
   const displayReviewCount = reviewStats?.totalReviews || artist.reviewCount || 0;
+
+  // Updated logic for checking if the current user is the artist of this card
+  let isViewingOwnCard = false;
+  if (loggedInUser && typeof loggedInUser.id !== 'undefined' && loggedInUser.id !== null &&
+      artist && typeof artist.id !== 'undefined' && artist.id !== null) {
+    if (String(loggedInUser.id) === String(artist.id)) {
+      isViewingOwnCard = true;
+    }
+  }
+  // For debugging, you could add:
+  // console.log(`ArtistCard Debug: artist.id=${artist?.id} (type: ${typeof artist?.id}), loggedInUser.id=${loggedInUser?.id} (type: ${typeof loggedInUser?.id}), isViewingOwnCard=${isViewingOwnCard}`);
 
   return (
     <TouchableOpacity 
@@ -98,6 +114,29 @@ export const ArtistCard: React.FC<ArtistCardProps> = ({
             <ThemedText style={styles.noReviewsText}>No reviews yet</ThemedText>
           )}
         </View>
+
+        {!isViewingOwnCard && (showBookingButton || showSendMessageButton) && ( // Only show container if at least one button is visible
+          <View style={styles.actionButtonsContainer}>
+            {showBookingButton && ( // Conditionally render Book Appointment
+              <TouchableOpacity style={styles.actionButton} onPress={() => console.log('Book Appointment with', artist.name)}>
+                <IconSymbol name="calendar.badge.plus" size={16} color="#FFFFFF" />
+                <ThemedText style={styles.actionButtonText}>Book Appointment</ThemedText>
+              </TouchableOpacity>
+            )}
+            {showSendMessageButton && ( // Conditionally render Send Message
+              <TouchableOpacity 
+                style={[
+                  styles.actionButton, 
+                  !showBookingButton && styles.fullWidthButton // If booking button is hidden, let send message take full width
+                ]} 
+                onPress={() => console.log('Send Message to', artist.name)}
+              >
+                <IconSymbol name="message.fill" size={16} color="#FFFFFF" />
+                <ThemedText style={styles.actionButtonText}>Send Message</ThemedText>
+              </TouchableOpacity>
+            )}
+          </View>
+        )}
       </View>
     </TouchableOpacity>
   );
@@ -196,4 +235,30 @@ const styles = StyleSheet.create({
     color: '#888888',
     fontStyle: 'italic',
   },
-}); 
+  actionButtonsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center', 
+    marginTop: 12,
+    gap: 8,
+  },
+  actionButton: {
+    flexShrink: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#007AFF',
+    paddingVertical: 8,
+    paddingHorizontal: 8, // Reduced from 10
+    borderRadius: 8,
+    minWidth: 0,
+  },
+  fullWidthButton: { 
+    flex: 1, 
+  },
+  actionButtonText: {
+    color: '#FFFFFF',
+    marginLeft: 6,
+    fontSize: 11, // Reduced from 12
+    fontWeight: '600',
+  },
+});

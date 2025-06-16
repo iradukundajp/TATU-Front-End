@@ -29,6 +29,20 @@ export const getAllTattooDesigns = async (params?: {
 };
 
 /**
+ * Search tattoo designs by a query string
+ * @param query - Search query string
+ * @returns Promise with tattoo designs
+ */
+export const searchTattooDesigns = async (query: string): Promise<{ designs: TattooDesign[]; pagination: any }> => {
+  try {
+    return await api.get('/api/tattoos', { params: { search: query } });
+  } catch (error) {
+    console.error('Error searching tattoo designs:', error);
+    throw error;
+  }
+};
+
+/**
  * Get tattoo designs for a specific artist
  */
 export const getArtistTattooDesigns = async (
@@ -105,4 +119,4 @@ export const deleteTattooDesign = async (id: string): Promise<boolean> => {
     console.error('Error deleting tattoo design:', error);
     throw error;
   }
-}; 
+};

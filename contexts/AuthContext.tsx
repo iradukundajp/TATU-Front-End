@@ -121,6 +121,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const updateProfile = async (profileData: UpdateProfileData) => {
     try {
       const updatedUser = await authService.updateProfile(profileData);
+      await authService.updateUserData(updatedUser); // Add this line
       setUser(updatedUser);
       return updatedUser;
     } catch (error) {
