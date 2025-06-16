@@ -52,17 +52,9 @@ export default function LoginScreen() {
           {/* Form Container */}
           <View style={loginStyles.formContainer}>
             {/* Email Input */}
-            <View style={[
-              loginStyles.inputContainer,
-              emailFocused && loginStyles.inputFocused
-            ]}>
-              <Ionicons 
-                name="mail-outline" 
-                size={20} 
-                color={emailFocused ? '#3b82f6' : '#6b7280'} 
-              />
+            <View style={loginStyles.basicInput}>
               <TextInput
-                style={loginStyles.textInput}
+                style={loginStyles.simpleInput}
                 placeholder="Email address"
                 placeholderTextColor="#6b7280"
                 value={email}
@@ -76,36 +68,30 @@ export default function LoginScreen() {
             </View>
 
             {/* Password Input */}
-            <View style={[
-              loginStyles.inputContainer,
-              passwordFocused && loginStyles.inputFocused
-            ]}>
-              <Ionicons 
-                name="lock-closed-outline" 
-                size={20} 
-                color={passwordFocused ? '#3b82f6' : '#6b7280'} 
-              />
-              <TextInput
-                style={loginStyles.textInput}
-                placeholder="Password"
-                placeholderTextColor="#6b7280"
-                value={password}
-                onChangeText={setPassword}
-                secureTextEntry={!showPassword}
-                editable={!loading}
-                onFocus={handlePasswordFocus}
-                onBlur={handlePasswordBlur}
-              />
-              <TouchableOpacity
-                onPress={togglePasswordVisibility}
-                style={loginStyles.eyeIcon}
-              >
-                <Ionicons 
-                  name={showPassword ? "eye-off-outline" : "eye-outline"} 
-                  size={20} 
-                  color="#6b7280" 
+            <View style={loginStyles.basicInput}>
+              <View style={loginStyles.passwordInputWrapper}>
+                <TextInput
+                  style={loginStyles.passwordInput}
+                  placeholder="Password"
+                  placeholderTextColor="#6b7280"
+                  value={password}
+                  onChangeText={setPassword}
+                  secureTextEntry={!showPassword}
+                  editable={!loading}
+                  onFocus={handlePasswordFocus}
+                  onBlur={handlePasswordBlur}
                 />
-              </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={togglePasswordVisibility}
+                  style={loginStyles.eyeButton}
+                >
+                  <Ionicons 
+                    name={showPassword ? "eye-off-outline" : "eye-outline"} 
+                    size={20} 
+                    color="#6b7280" 
+                  />
+                </TouchableOpacity>
+              </View>
             </View>
 
             {/* Forgot Password */}

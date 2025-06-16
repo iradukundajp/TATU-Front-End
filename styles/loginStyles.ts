@@ -45,6 +45,34 @@ export const loginStyles = StyleSheet.create({
     justifyContent: 'center',
     paddingBottom: 50,
   },
+  basicInput: {
+    marginBottom: 20,
+  },
+  simpleInput: {
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    color: '#ffffff',
+    fontSize: 16,
+  },
+  passwordInputWrapper: {
+    flexDirection: 'row',
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  passwordInput: {
+    flex: 1,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    color: '#ffffff',
+    fontSize: 16,
+  },
+  eyeButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+  },
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',

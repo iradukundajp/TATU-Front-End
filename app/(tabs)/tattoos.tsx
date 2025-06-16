@@ -96,7 +96,7 @@ export default function TattoosScreen() {
   const loadData = async () => {
     setLoading(true);
     try {
-      if (isArtist) {
+      if (isArtist()) {
         const myDesignsData = await tattooService.getMyTattooDesigns();
         setMyDesigns(myDesignsData);
       } else {
@@ -317,7 +317,7 @@ export default function TattoosScreen() {
             <ThemedText type="default" style={styles.styleTag}>{item.style}</ThemedText>
             {item.price && <ThemedText type="default">${item.price}</ThemedText>}
           </View>
-          {isArtist && (
+          {(isArtist()) && (
             <TouchableOpacity
               style={styles.deleteButton}
               onPress={() => handleDeleteDesign(item)}
@@ -537,7 +537,7 @@ export default function TattoosScreen() {
   }
   
   // Artist view
-  if (isArtist) {
+  if (isArtist()) {
     return (
       <ThemedView style={styles.container}>
         {currentView === 'form' ? (

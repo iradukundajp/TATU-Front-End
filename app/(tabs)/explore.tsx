@@ -188,14 +188,13 @@ export default function ExploreScreen() {
         {loading ? (
           <ActivityIndicator size="large" color="#007AFF" style={styles.loader} />
         ) : featuredArtists.length > 0 ? (
-          <FlatList
-            data={featuredArtists}
-            renderItem={renderArtistCard}
-            keyExtractor={item => item.id}
-            horizontal={false}
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.artistListContainer}
-          />
+          <View style={styles.artistListContainer}>
+            {featuredArtists.map((item) => (
+              <View key={item.id}>
+                {renderArtistCard({ item })}
+              </View>
+            ))}
+          </View>
         ) : (
           <ThemedView style={styles.emptyStateContainer}>
             <IconSymbol name="person.2.slash" size={40} color="#555555" />

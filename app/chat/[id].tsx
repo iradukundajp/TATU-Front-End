@@ -11,6 +11,7 @@ import {
   AppState,
   RefreshControl
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { ThemedView } from '@/components/ThemedView';
@@ -24,6 +25,7 @@ export default function ChatScreen() {
   const { id: conversationId, otherUserId, otherUserName } = useLocalSearchParams();
   const router = useRouter();
   const { user } = useAuth();
+  const insets = useSafeAreaInsets();
   
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
@@ -185,11 +187,25 @@ export default function ChatScreen() {
   const renderMessage = ({ item }: { item: Message }) => {
     const isMyMessage = item.senderId === user?.id;
     
+    // Debug logging
+    console.log('Message:', {
+      content: item.content.substring(0, 20) + '...',
+      senderId: item.senderId,
+      currentUserId: user?.id,
+      isMyMessage
+    });
+    
     return (
       <View style={[
         styles.messageContainer,
         isMyMessage ? styles.myMessageContainer : styles.otherMessageContainer
       ]}>
+        {/* Add sender name for debugging */}
+        {!isMyMessage && (
+          <ThemedText style={styles.senderName}>
+            {otherUserName}
+          </ThemedText>
+        )}
         <View style={[
           styles.messageBubble,
           isMyMessage ? styles.myMessageBubble : styles.otherMessageBubble
@@ -261,7 +277,7 @@ export default function ChatScreen() {
         />
 
         {/* Message Input */}
-        <View style={styles.inputContainer}>
+        <View style={[styles.inputContainer, { paddingBottom: Math.max(insets.bottom, 16) + 18 }]}>
           <TextInput
             style={styles.textInput}
             value={newMessage}
@@ -343,10 +359,17 @@ const styles = StyleSheet.create({
   myMessageBubble: {
     backgroundColor: '#007AFF',
     borderBottomRightRadius: 4,
+    shadowColor: '#007AFF',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.3,
+    shadowRadius: 2,
+    elevation: 2,
   },
   otherMessageBubble: {
     backgroundColor: '#333333',
     borderBottomLeftRadius: 4,
+    borderWidth: 1,
+    borderColor: '#444444',
   },
   messageText: {
     fontSize: 16,
@@ -369,11 +392,17 @@ const styles = StyleSheet.create({
   otherMessageTime: {
     color: '#AAAAAA',
   },
+  senderName: {
+    fontSize: 12,
+    color: '#AAAAAA',
+    marginBottom: 4,
+    marginLeft: 4,
+  },
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'flex-end',
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingTop: 12,
     borderTopWidth: 1,
     borderTopColor: '#333333',
     backgroundColor: '#1A1A1A',
