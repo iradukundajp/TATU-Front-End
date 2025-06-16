@@ -18,7 +18,7 @@ import { ThemedView } from '@/components/ThemedView';
 import { ThemedText } from '@/components/ThemedText';
 import { IconSymbol } from '@/components/ui/IconSymbol';
 import { useAuth } from '@/contexts/AuthContext';
-import * as messageService from '@/services/message.service';
+import { useMessages } from '@/hooks/useMessages';
 import { Message } from '@/types/message';
 
 export default function ChatScreen() {
@@ -27,150 +27,70 @@ export default function ChatScreen() {
   const { user } = useAuth();
   const insets = useSafeAreaInsets();
   
-  const [messages, setMessages] = useState<Message[]>([]);
+  const { 
+    messages, 
+    loading, 
+    error, 
+    sendMessage: sendWebSocketMessage, 
+    markMessagesAsRead, 
+    loadMessages, 
+    setTyping, 
+    typingUsers, 
+    isConnected, 
+    connectionState 
+  } = useMessages(typeof conversationId === 'string' ? conversationId : undefined);
+  
   const [newMessage, setNewMessage] = useState('');
-  const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [sending, setSending] = useState(false);
   const flatListRef = useRef<FlatList>(null);
-  const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const lastMessageCountRef = useRef(0);
-  const isScreenFocused = useRef(false);
+  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Use focus effect to control polling
+  // Use focus effect to mark messages as read when screen is focused
   useFocusEffect(
     React.useCallback(() => {
-      isScreenFocused.current = true;
-      if (conversationId && typeof conversationId === 'string') {
-        loadMessages();
-        markMessagesAsRead();
-        startMessagePolling();
+      if (conversationId && typeof conversationId === 'string' && isConnected) {
+        markMessagesAsRead(conversationId);
       }
-
-      return () => {
-        isScreenFocused.current = false;
-        stopMessagePolling();
-      };
-    }, [conversationId])
+    }, [conversationId, isConnected, markMessagesAsRead])
   );
 
+  // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
-    // Listen for app state changes
-    const handleAppStateChange = (nextAppState: string) => {
-      if (nextAppState === 'active' && isScreenFocused.current) {
-        // App came to foreground, refresh messages
-        loadMessages(false);
-        markMessagesAsRead();
-      }
-    };
-
-    const subscription = AppState.addEventListener('change', handleAppStateChange);
-
-    return () => {
-      subscription?.remove();
-      stopMessagePolling();
-    };
-  }, []);
-
-  const startMessagePolling = () => {
-    // Only poll if screen is focused
-    if (!isScreenFocused.current || !conversationId) return;
-    
-    // Clear any existing interval
-    stopMessagePolling();
-    
-    // Poll for new messages every 5 seconds (less frequent than before)
-    pollIntervalRef.current = setInterval(() => {
-      if (isScreenFocused.current && typeof conversationId === 'string') {
-        loadMessages(false);
-      } else {
-        stopMessagePolling();
-      }
-    }, 5000);
-  };
-
-  const stopMessagePolling = () => {
-    if (pollIntervalRef.current) {
-      clearInterval(pollIntervalRef.current);
-      pollIntervalRef.current = null;
+    if (messages.length > 0) {
+      setTimeout(() => {
+        flatListRef.current?.scrollToEnd({ animated: true });
+      }, 100);
     }
-  };
+  }, [messages.length]);
 
-  const loadMessages = async (showLoading = true) => {
+  const handleRefresh = async () => {
+    setRefreshing(true);
     try {
-      if (showLoading) {
-        setLoading(true);
-      }
-      
-      if (typeof conversationId === 'string') {
-        const response = await messageService.getConversationMessages(conversationId);
-        const newMessages = response.messages;
-        
-        // Only update if there are new messages
-        if (newMessages.length !== lastMessageCountRef.current) {
-          setMessages(newMessages);
-          lastMessageCountRef.current = newMessages.length;
-          
-          // Auto-scroll to bottom only if there are new messages and we're not manually refreshing
-          if (!refreshing && newMessages.length > messages.length) {
-            setTimeout(() => {
-              flatListRef.current?.scrollToEnd({ animated: true });
-            }, 100);
-          }
-        }
+      if (typeof conversationId === 'string' && isConnected) {
+        loadMessages(conversationId);
       }
     } catch (error) {
-      console.error('Error loading messages:', error);
-      if (showLoading) {
-        Alert.alert('Error', 'Failed to load messages');
-      }
+      console.error('Error refreshing messages:', error);
     } finally {
-      if (showLoading) {
-        setLoading(false);
-      }
       setRefreshing(false);
     }
   };
 
-  const handleRefresh = async () => {
-    setRefreshing(true);
-    await loadMessages(false);
-    await markMessagesAsRead();
-  };
-
-  const markMessagesAsRead = async () => {
-    try {
-      if (typeof conversationId === 'string') {
-        await messageService.markMessagesAsRead(conversationId);
-      }
-    } catch (error) {
-      console.error('Error marking messages as read:', error);
-    }
-  };
-
   const sendMessage = async () => {
-    if (!newMessage.trim() || !otherUserId || typeof otherUserId !== 'string') return;
+    if (!newMessage.trim() || !conversationId || typeof conversationId !== 'string') return;
 
     try {
       setSending(true);
-      const message = await messageService.sendMessage({
-        receiverId: otherUserId,
-        content: newMessage.trim(),
-        messageType: 'text'
-      });
-
-      // Add message to local state immediately
-      setMessages(prev => {
-        const newMessages = [...prev, message];
-        lastMessageCountRef.current = newMessages.length;
-        return newMessages;
-      });
+      await sendWebSocketMessage(conversationId, newMessage.trim(), 'text');
       setNewMessage('');
       
-      // Scroll to bottom
-      setTimeout(() => {
-        flatListRef.current?.scrollToEnd({ animated: true });
-      }, 100);
+      // Stop typing indicator
+      setTyping(conversationId, false);
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+        typingTimeoutRef.current = null;
+      }
     } catch (error) {
       console.error('Error sending message:', error);
       Alert.alert('Error', 'Failed to send message');
@@ -178,6 +98,30 @@ export default function ChatScreen() {
       setSending(false);
     }
   };
+
+  // Handle typing indicators
+  const handleTextChange = (text: string) => {
+    setNewMessage(text);
+    
+    if (typeof conversationId === 'string' && isConnected) {
+      // Start typing indicator
+      setTyping(conversationId, true);
+      
+      // Clear existing timeout
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+      }
+      
+      // Stop typing indicator after 2 seconds of inactivity
+      typingTimeoutRef.current = setTimeout(() => {
+        setTyping(conversationId, false);
+      }, 2000);
+    }
+  };
+
+  // Get typing users for current conversation
+  const currentTypingUsers = typingUsers[conversationId as string] || [];
+  const otherUsersTyping = currentTypingUsers.filter(userId => userId !== user?.id);
 
   const formatTime = (dateString: string) => {
     const date = new Date(dateString);
@@ -249,9 +193,17 @@ export default function ChatScreen() {
         </TouchableOpacity>
         
         <View style={styles.headerInfo}>
-          <ThemedText style={styles.headerTitle} numberOfLines={1}>
-            {otherUserName || 'Chat'}
-          </ThemedText>
+          <View style={styles.headerTitleRow}>
+            <ThemedText style={styles.headerTitle} numberOfLines={1}>
+              {otherUserName || 'Chat'}
+            </ThemedText>
+            <View style={[styles.connectionStatus, { backgroundColor: isConnected ? '#4CAF50' : '#F44336' }]} />
+          </View>
+          {otherUsersTyping.length > 0 && (
+            <ThemedText style={styles.typingIndicator}>
+              {otherUsersTyping.length === 1 ? 'typing...' : `${otherUsersTyping.length} people typing...`}
+            </ThemedText>
+          )}
         </View>
       </View>
 
@@ -281,7 +233,7 @@ export default function ChatScreen() {
           <TextInput
             style={styles.textInput}
             value={newMessage}
-            onChangeText={setNewMessage}
+            onChangeText={handleTextChange}
             placeholder="Type a message..."
             placeholderTextColor="#AAAAAA"
             multiline
@@ -329,10 +281,27 @@ const styles = StyleSheet.create({
   headerInfo: {
     flex: 1,
   },
+  headerTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
   headerTitle: {
     fontSize: 18,
     fontWeight: '600',
     color: '#FFFFFF',
+    flex: 1,
+  },
+  connectionStatus: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  typingIndicator: {
+    fontSize: 12,
+    color: '#4CAF50',
+    fontStyle: 'italic',
+    marginTop: 2,
   },
   chatContainer: {
     flex: 1,

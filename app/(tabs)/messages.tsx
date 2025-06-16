@@ -7,96 +7,48 @@ import { ConversationList } from '@/components/ConversationList';
 import { IconSymbol } from '@/components/ui/IconSymbol';
 import { TouchableOpacity } from 'react-native';
 import { useAuth } from '@/contexts/AuthContext';
-import * as messageService from '@/services/message.service';
+import { useMessages } from '@/hooks/useMessages';
+import { useNotifications } from '@/hooks/useNotifications';
 import { Conversation } from '@/types/message';
 
 export default function MessagesScreen() {
   const { isAuthenticated, user } = useAuth();
-  const [conversations, setConversations] = useState<Conversation[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { 
+    conversations, 
+    loading, 
+    error, 
+    loadConversations, 
+    isConnected, 
+    connectionState 
+  } = useMessages();
+  const { showSuccessNotification, showErrorNotification } = useNotifications();
   const [refreshing, setRefreshing] = useState(false);
-  const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const isScreenFocused = useRef(false);
 
-  // Use focus effect to control polling
+  // Use focus effect to load conversations when screen is focused
   useFocusEffect(
     React.useCallback(() => {
-      isScreenFocused.current = true;
-      if (isAuthenticated) {
+      console.log('📱 Messages screen focused - loading conversations via WebSocket');
+      if (isAuthenticated && isConnected) {
         loadConversations();
-        startConversationPolling();
       }
-
-      return () => {
-        isScreenFocused.current = false;
-        stopConversationPolling();
-      };
-    }, [isAuthenticated])
+    }, [isAuthenticated, isConnected, loadConversations])
   );
-
-  useEffect(() => {
-    // Listen for app state changes
-    const handleAppStateChange = (nextAppState: string) => {
-      if (nextAppState === 'active' && isAuthenticated && isScreenFocused.current) {
-        loadConversations(false);
-      }
-    };
-
-    const subscription = AppState.addEventListener('change', handleAppStateChange);
-
-    return () => {
-      subscription?.remove();
-      stopConversationPolling();
-    };
-  }, [isAuthenticated]);
-
-  const startConversationPolling = () => {
-    // Only poll if screen is focused and user is authenticated
-    if (!isScreenFocused.current || !isAuthenticated) return;
-    
-    // Clear any existing interval
-    stopConversationPolling();
-    
-    // Poll for conversation updates every 10 seconds (less frequent)
-    pollIntervalRef.current = setInterval(() => {
-      if (isAuthenticated && isScreenFocused.current) {
-        loadConversations(false);
-      } else {
-        stopConversationPolling();
-      }
-    }, 10000);
-  };
-
-  const stopConversationPolling = () => {
-    if (pollIntervalRef.current) {
-      clearInterval(pollIntervalRef.current);
-      pollIntervalRef.current = null;
-    }
-  };
-
-  const loadConversations = async (showLoading = true) => {
-    try {
-      if (showLoading) {
-        setLoading(true);
-      }
-      const data = await messageService.getUserConversations();
-      setConversations(data);
-    } catch (error) {
-      console.error('Error loading conversations:', error);
-      if (showLoading) {
-        Alert.alert('Error', 'Failed to load conversations');
-      }
-    } finally {
-      if (showLoading) {
-        setLoading(false);
-      }
-      setRefreshing(false);
-    }
-  };
 
   const handleRefresh = async () => {
     setRefreshing(true);
-    await loadConversations(false);
+    try {
+      if (isConnected) {
+        loadConversations();
+        showSuccessNotification('Refreshed', 'Conversations updated successfully');
+      } else {
+        showErrorNotification('Connection Error', 'Unable to refresh - not connected to server');
+      }
+    } catch (error) {
+      console.error('Error refreshing conversations:', error);
+      showErrorNotification('Refresh Failed', 'Unable to refresh conversations');
+    } finally {
+      setRefreshing(false);
+    }
   };
 
   const handleConversationPress = (conversation: Conversation) => {
@@ -178,12 +130,15 @@ export default function MessagesScreen() {
           <IconSymbol name="chevron.left" size={24} color="#FFFFFF" />
         </TouchableOpacity>
         <ThemedText style={styles.headerTitle}>Messages</ThemedText>
-        <TouchableOpacity 
-          style={styles.newMessageButton}
-          onPress={handleNewMessage}
-        >
-          <IconSymbol name="square.and.pencil" size={24} color="#007AFF" />
-        </TouchableOpacity>
+        <View style={styles.headerRight}>
+          <View style={[styles.connectionStatus, { backgroundColor: isConnected ? '#4CAF50' : '#F44336' }]} />
+          <TouchableOpacity 
+            style={styles.newMessageButton}
+            onPress={handleNewMessage}
+          >
+            <IconSymbol name="square.and.pencil" size={24} color="#007AFF" />
+          </TouchableOpacity>
+        </View>
       </View>
 
       <ConversationList
@@ -268,5 +223,15 @@ const styles = StyleSheet.create({
   placeholder: {
     width: 24,
     height: 24,
+  },
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  connectionStatus: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
   },
 });

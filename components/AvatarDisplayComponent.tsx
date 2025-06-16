@@ -251,7 +251,11 @@ const AvatarDisplayComponent: React.FC<AvatarDisplayProps> = ({
   const displayHeight = propContainerHeight || MANNEQUIN_HEIGHT;
 
   if (!avatarConfiguration || !avatarConfiguration.baseMannequinId) {
-    return <ThemedText>No avatar configuration set or mannequin ID missing.</ThemedText>;
+    return (
+      <View style={{ width: displayWidth, height: displayHeight, justifyContent: 'center', alignItems: 'center' }}>
+        <ThemedText>No avatar configuration set or mannequin ID missing.</ThemedText>
+      </View>
+    );
   }
 
   const mannequinImageSource = mannequinImages[avatarConfiguration.baseMannequinId];
