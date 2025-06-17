@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, TouchableOpacity } from 'react-native';
-import { Image } from 'expo-image';
+// import { Image } from 'expo-image'; // Comment out if only AvatarDisplayComponent is used for avatar
 import { ThemedText } from '@/components/ThemedText';
 import { StarRating } from '@/components/StarRating';
 import { IconSymbol } from '@/components/ui/IconSymbol';
@@ -8,31 +8,37 @@ import { Artist } from '@/types/artist';
 import { ReviewStatsResponse } from '@/types/review';
 import * as reviewService from '@/services/review.service';
 import { useAuth } from '@/contexts/AuthContext';
+import AvatarDisplayComponent from '@/components/AvatarDisplayComponent'; // Import AvatarDisplayComponent
 
 interface ArtistCardProps {
   artist: Artist;
   onPress: (artistId: string) => void;
   style?: any;
-  showBookingButton?: boolean; // New prop
-  showSendMessageButton?: boolean; // New prop to control Send Message button
-  onSendMessage?: (artistId: string) => void; // New prop
+  showBookingButton?: boolean;
+  showSendMessageButton?: boolean;
+  onSendMessage?: (artistId: string) => void;
 }
 
 export const ArtistCard: React.FC<ArtistCardProps> = ({
   artist,
   onPress,
   style,
-  showBookingButton = true, // Default to true
-  showSendMessageButton = true, // Default to true
-  onSendMessage, // Destructure new prop
+  showBookingButton = true,
+  showSendMessageButton = true,
+  onSendMessage,
 }) => {
   const [reviewStats, setReviewStats] = useState<ReviewStatsResponse | null>(null);
   const [loadingStats, setLoadingStats] = useState(true);
-  const { user: loggedInUser } = useAuth(); // Get the logged-in user
+  // const [avatarLoadError, setAvatarLoadError] = useState(false); // Removed
+  // const [loggedBaseUrl, setLoggedBaseUrl] = useState(false); // Removed
+  const { user: loggedInUser } = useAuth();
 
   useEffect(() => {
     fetchReviewStats();
-  }, [artist.id]);
+    // console.log(`ArtistCard Effect: Artist ID: ${artist.id}, Initial avatarUrl: '${artist.avatarUrl}'`); // Old log
+    // setAvatarLoadError(false); // Removed
+    console.log(`ArtistCard Effect: Artist ID: ${artist.id}, Avatar Config:`, artist.avatarConfiguration ? 'Present' : 'Absent');
+  }, [artist.id, artist.avatarConfiguration]); // Depend on avatarConfiguration
 
   const fetchReviewStats = async () => {
     try {
@@ -49,16 +55,12 @@ export const ArtistCard: React.FC<ArtistCardProps> = ({
   const displayRating = reviewStats?.averageRating || artist.rating || 0;
   const displayReviewCount = reviewStats?.totalReviews || artist.reviewCount || 0;
 
-  // Updated logic for checking if the current user is the artist of this card
   let isViewingOwnCard = false;
-  if (loggedInUser && typeof loggedInUser.id !== 'undefined' && loggedInUser.id !== null &&
-      artist && typeof artist.id !== 'undefined' && artist.id !== null) {
+  if (loggedInUser && loggedInUser.id !== null && artist && artist.id !== null) {
     if (String(loggedInUser.id) === String(artist.id)) {
       isViewingOwnCard = true;
     }
   }
-  // For debugging, you could add:
-  // console.log(`ArtistCard Debug: artist.id=${artist?.id} (type: ${typeof artist?.id}), loggedInUser.id=${loggedInUser?.id} (type: ${typeof loggedInUser?.id}), isViewingOwnCard=${isViewingOwnCard}`);
 
   return (
     <TouchableOpacity 
@@ -67,104 +69,75 @@ export const ArtistCard: React.FC<ArtistCardProps> = ({
       activeOpacity={0.7}
     >
       <View style={styles.artistImageContainer}>
-        {artist.avatarUrl ? (
-          <Image 
-            source={{ uri: artist.avatarUrl }} 
-            style={styles.artistImage}
-            contentFit="cover"
+        {/* Updated Avatar Display Logic */}
+        {artist.avatarConfiguration ? (
+          <AvatarDisplayComponent
+            avatarConfiguration={artist.avatarConfiguration}
+            isEditing={false}
+            containerWidth={70} // Use numeric value from styles.artistImageContainer.width
+            containerHeight={70} // Use numeric value from styles.artistImageContainer.height
           />
+        ) : artist.avatarUrl ? (
+            // Fallback for old avatarUrl - consider if this is needed
+            <View style={styles.artistImagePlaceholder}>
+                <IconSymbol name="person.circle.fill" size={49} color="#888888" /> {/* Numeric size: 70 * 0.7 */}
+                <ThemedText style={{fontSize: 9, color: '#888888', textAlign: 'center', marginTop: 2}}>Legacy</ThemedText>
+            </View>
         ) : (
           <View style={styles.artistImagePlaceholder}>
-            <IconSymbol name="person.fill" size={40} color="#555555" />
+            <IconSymbol name="person.fill" size={49} color="#555555" /> {/* Numeric size: 70 * 0.7 */}
+            <ThemedText style={{fontSize: 9, color: '#555555', textAlign: 'center', marginTop: 2}}>No Avatar</ThemedText>
           </View>
         )}
       </View>
       
       <View style={styles.artistInfo}>
-        <ThemedText style={styles.artistName}>{artist.name}</ThemedText>
-        <ThemedText style={styles.artistLocation}>{artist.location}</ThemedText>
+        <ThemedText style={styles.artistName} numberOfLines={1}>{artist.name}</ThemedText>
+        <ThemedText style={styles.artistLocation} numberOfLines={1}>{artist.location || 'Location not set'}</ThemedText>
         
-        {/* Display Specialties */}
         {artist.specialties && artist.specialties.length > 0 && (
           <View style={styles.detailRow}>
             <IconSymbol name="sparkles" size={14} color={styles.detailIcon.color} style={styles.detailIcon} />
-            <ThemedText style={styles.detailText}>Specialties: {artist.specialties.join(', ')}</ThemedText>
+            <ThemedText style={styles.detailText} numberOfLines={1}>Specialties: {artist.specialties.join(', ')}</ThemedText>
           </View>
         )}
 
-        {/* Display Styles */}
         {artist.styles && artist.styles.length > 0 && (
           <View style={styles.detailRow}>
             <IconSymbol name="paintbrush.fill" size={14} color={styles.detailIcon.color} style={styles.detailIcon} />
-            <ThemedText style={styles.detailText}>Styles: {artist.styles.join(', ')}</ThemedText>
-          </View>
-        )}
-
-        {/* Display Experience */}
-        {artist.experience !== null && artist.experience !== undefined && (
-          <View style={styles.detailRow}>
-            <IconSymbol name="briefcase.fill" size={14} color={styles.detailIcon.color} style={styles.detailIcon} />
-            <ThemedText style={styles.detailText}>Experience: {artist.experience} year{artist.experience !== 1 ? 's' : ''}</ThemedText>
-          </View>
-        )}
-
-        {/* Display Hourly Rate */}
-        {artist.hourlyRate !== null && artist.hourlyRate !== undefined && (
-          <View style={styles.detailRow}>
-            <IconSymbol name="creditcard.fill" size={14} color={styles.detailIcon.color} style={styles.detailIcon} />
-            <ThemedText style={styles.detailText}>Rate: ${artist.hourlyRate}/hr</ThemedText>
+            <ThemedText style={styles.detailText} numberOfLines={1}>Styles: {artist.styles.join(', ')}</ThemedText>
           </View>
         )}
         
         <View style={styles.artistRating}>
           {loadingStats ? (
-            <View style={styles.ratingPlaceholder}>
-              <ThemedText style={styles.loadingText}>Loading...</ThemedText>
-            </View>
+            <View style={styles.ratingPlaceholder}><ThemedText style={styles.loadingText}>Loading...</ThemedText></View>
           ) : displayReviewCount > 0 ? (
             <>
-              <StarRating 
-                rating={Math.round(displayRating)} 
-                size={14} 
-                starColor="#FFD700"
-                emptyStarColor="#555555"
-              />
-              <ThemedText style={styles.averageRating}>
-                {displayRating.toFixed(1)}
-              </ThemedText>
-              <ThemedText style={styles.reviewCount}>
-                ({displayReviewCount})
-              </ThemedText>
+              <StarRating rating={Math.round(displayRating)} size={14} starColor="#FFD700" emptyStarColor="#555555" />
+              <ThemedText style={styles.averageRating}>{displayRating.toFixed(1)}</ThemedText>
+              <ThemedText style={styles.reviewCount}>({displayReviewCount})</ThemedText>
             </>
           ) : (
             <ThemedText style={styles.noReviewsText}>No reviews yet</ThemedText>
           )}
         </View>
 
-        {!isViewingOwnCard && (showBookingButton || showSendMessageButton) && ( // Only show container if at least one button is visible
+        {!isViewingOwnCard && (showBookingButton || showSendMessageButton) && (
           <View style={styles.actionButtonsContainer}>
-            {showBookingButton && ( // Conditionally render Book Appointment
+            {showBookingButton && (
               <TouchableOpacity style={styles.actionButton} onPress={() => console.log('Book Appointment with', artist.name)}>
                 <IconSymbol name="calendar.badge.plus" size={16} color="#FFFFFF" />
-                <ThemedText style={styles.actionButtonText}>Book Appointment</ThemedText>
+                <ThemedText style={styles.actionButtonText}>Book</ThemedText>
               </TouchableOpacity>
             )}
-            {showSendMessageButton && ( // Conditionally render Send Message
+            {showSendMessageButton && (
               <TouchableOpacity 
-                style={[
-                  styles.actionButton, 
-                  !showBookingButton && styles.fullWidthButton // If booking button is hidden, let send message take full width
-                ]} 
-                onPress={() => {
-                  if (onSendMessage) {
-                    onSendMessage(artist.id); // Use the new prop
-                  } else {
-                    console.log('Send Message to', artist.name); // Fallback if not provided
-                  }
-                }}
+                style={[styles.actionButton, !showBookingButton && styles.fullWidthButton]} 
+                onPress={() => onSendMessage && onSendMessage(artist.id)}
               >
                 <IconSymbol name="message.fill" size={16} color="#FFFFFF" />
-                <ThemedText style={styles.actionButtonText}>Send Message</ThemedText>
+                <ThemedText style={styles.actionButtonText}>Message</ThemedText>
               </TouchableOpacity>
             )}
           </View>
@@ -176,138 +149,113 @@ export const ArtistCard: React.FC<ArtistCardProps> = ({
 
 const styles = StyleSheet.create({
   artistCard: {
-    backgroundColor: '#2C2C2C', // Darker card background
+    backgroundColor: '#2C2C2C',
     borderRadius: 12,
-    padding: 16,
+    padding: 12, // Reduced padding
     marginVertical: 8,
     marginHorizontal: 16,
     flexDirection: 'row',
     shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.2, // Slightly more visible shadow on dark
-    shadowRadius: 4,
-    elevation: 4, // Slightly more elevation
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
+    elevation: 3,
   },
   artistImageContainer: {
-    marginRight: 16,
-  },
-  artistImage: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: '#444444', // Placeholder while image loads
-  },
-  artistImagePlaceholder: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: '#444444', // Darker placeholder
+    width: 70, // Reduced size
+    height: 70, // Reduced size
+    borderRadius: 35, // Half of width/height
+    backgroundColor: '#3A3A3C', // Placeholder background
     justifyContent: 'center',
     alignItems: 'center',
+    overflow: 'hidden', // Ensure AvatarDisplayComponent respects border radius
+    marginRight: 12, // Reduced margin
+  },
+  artistImage: { // Style for AvatarDisplayComponent container
+    width: '100%',
+    height: '100%',
+  },
+  artistImagePlaceholder: {
+    width: '100%',
+    height: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#3A3A3C',
   },
   artistInfo: {
     flex: 1,
-    // Removed justifyContent: 'space-between' to allow natural flow
+    justifyContent: 'center', // Center content vertically
   },
   artistName: {
-    fontSize: 20, // Slightly larger name
-    fontWeight: 'bold',
-    color: '#EFEFEF', // Lighter text for name
-    marginBottom: 4,
+    fontSize: 17, // Slightly reduced
+    fontWeight: '600', // Bolder
+    color: '#EFEFF0',
+    marginBottom: 2, // Reduced margin
   },
   artistLocation: {
-    fontSize: 14,
-    color: '#B0B0B0', // Lighter gray for location
-    marginBottom: 8,
+    fontSize: 13, // Slightly reduced
+    color: '#8E8E93',
+    marginBottom: 4, // Reduced margin
   },
   detailRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 5, // Space between detail rows
+    marginBottom: 2, // Reduced margin
   },
   detailIcon: {
-    marginRight: 6,
-    color: '#A0A0A0', // Icon color for details
+    marginRight: 5,
+    color: '#8E8E93', // Consistent icon color
   },
   detailText: {
-    fontSize: 13,
-    color: '#C0C0C0', // Text color for details
-    flexShrink: 1, // Allow text to wrap if needed
-  },
-  artistSpecialties: { // This style is for the old tag display, can be removed if not used
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    marginBottom: 8,
-  },
-  specialtyTag: { // This style is for the old tag display, can be removed if not used
-    backgroundColor: '#444444', // Darker tag
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
-    marginRight: 6,
-    marginBottom: 4,
-  },
-  specialtyText: { // This style is for the old tag display, can be removed if not used
-    fontSize: 12,
-    color: '#E0E0E0',
+    fontSize: 12, // Reduced size
+    color: '#C7C7CC',
+    flexShrink: 1, // Allow text to shrink if needed
   },
   artistRating: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 8, // Add some margin top if details are above
+    marginTop: 4, // Reduced margin
   },
-  ratingPlaceholder: {
-    height: 20,
-    justifyContent: 'center',
-  },
-  loadingText: {
-    fontSize: 12,
-    color: '#999999',
-  },
+  ratingPlaceholder: { /* For loading text */ },
+  loadingText: { fontSize: 12, color: '#8E8E93' },
   averageRating: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#EFEFEF', // Lighter text
-    marginLeft: 6,
-    marginRight: 4,
+    fontSize: 12, // Reduced size
+    color: '#EFEFF0',
+    marginLeft: 4,
+    fontWeight: '500',
   },
   reviewCount: {
-    fontSize: 12,
-    color: '#B0B0B0', // Lighter gray
+    fontSize: 12, // Reduced size
+    color: '#8E8E93',
+    marginLeft: 4,
   },
   noReviewsText: {
-    fontSize: 12,
-    color: '#999999', // Adjusted for dark theme
+    fontSize: 12, // Reduced size
+    color: '#8E8E93',
     fontStyle: 'italic',
   },
   actionButtonsContainer: {
     flexDirection: 'row',
-    justifyContent: 'space-around', // Changed to space-around for better spacing
-    marginTop: 12,
-    gap: 8,
+    marginTop: 8, // Reduced margin
+    gap: 8, // Space between buttons
   },
   actionButton: {
-    flexGrow: 1, // Allow buttons to grow and share space
-    flexBasis: 0, // Distribute space evenly
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#0A84FF', // Primary action color (dark theme accent)
-    paddingVertical: 10, // Increased padding
-    paddingHorizontal: 10,
+    backgroundColor: '#0A84FF',
+    paddingVertical: 7, // Reduced padding
+    paddingHorizontal: 10, // Reduced padding
     borderRadius: 8,
-    minWidth: 0,
+    flex: 1, // Allow buttons to share space
   },
-  fullWidthButton: { 
-    flexGrow: 1, 
+  fullWidthButton: {
+    // Styles if only one button is present, not strictly needed if flex:1 is used
   },
   actionButtonText: {
     color: '#FFFFFF',
-    marginLeft: 8, // Increased margin
-    fontSize: 13, // Slightly larger text
-    fontWeight: '600',
+    fontSize: 13, // Reduced size
+    fontWeight: '500',
+    marginLeft: 5,
   },
 });

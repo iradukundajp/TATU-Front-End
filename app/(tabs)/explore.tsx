@@ -117,15 +117,18 @@ export default function ExploreScreen() {
     );
   };
 
-  const renderArtistCard = ({ item }: { item: Artist }) => (
-    <ArtistCard
-      artist={item}
-      onPress={handleArtistPress}
-      showBookingButton={false} // Explicitly hide Book Appointment button
-      showSendMessageButton={true} // Keep Send Message button visible
-      onSendMessage={() => handleSendMessage(item.id)} // Use new handler
-    />
-  );
+  const renderArtistCard = ({ item }: { item: Artist }) => {
+    console.log(`ExploreScreen: Rendering ArtistCard for ${item.name} (ID: ${item.id}). Avatar Config:`, item.avatarConfiguration ? 'Present' : 'Absent', 'Full artist object:', item); // Added detailed log
+    return (
+      <ArtistCard
+        artist={item}
+        onPress={handleArtistPress}
+        showBookingButton={false} // Explicitly hide Book Appointment button
+        showSendMessageButton={true} // Keep Send Message button visible
+        onSendMessage={() => handleSendMessage(item.id)} // Use new handler
+      />
+    );
+  };
 
   return (
     <ParallaxScrollView

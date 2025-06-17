@@ -1,22 +1,23 @@
 // (tabs)/artist/[id].tsx
-import React, { useState, useEffect } from 'react';
-import { StyleSheet, ScrollView, View, Image, Modal, Alert, ActivityIndicator, TouchableOpacity } from 'react-native';
+import React, { useState, useEffect, useCallback } from 'react';
+import { StyleSheet, ScrollView, View, /* Image, */ Modal, Alert, ActivityIndicator, TouchableOpacity, Platform } from 'react-native'; // Image from react-native commented out, Platform added
 import { ThemedView } from '@/components/ThemedView';
 import { ThemedText } from '@/components/ThemedText';
 import { TouchableFix } from '@/components/TouchableFix';
 import { IconSymbol } from '@/components/ui/IconSymbol';
-import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
 import * as artistService from '@/services/artist.service';
 import * as reviewService from '@/services/review.service';
 import * as messageService from '@/services/message.service';
 import { Artist } from '@/types/artist';
-import { PortfolioItem, ArtistPortfolioAPIResponse } from '@/types/portfolio'; // Added ArtistPortfolioAPIResponse
+import { PortfolioItem, ArtistPortfolioAPIResponse } from '@/types/portfolio';
 import { ReviewStatsResponse } from '@/types/review';
 import { StarRating } from '@/components/StarRating';
 import { ArtistReviewsSection } from '@/components/ArtistReviewsSection';
-// Import the BookingForm with its props interface
 import BookingForm, { BookingFormProps } from '@/components/BookingForm';
+import AvatarDisplayComponent from '@/components/AvatarDisplayComponent'; // Ensure AvatarDisplayComponent is imported
+import { Image as ExpoImage } from 'expo-image'; // Added import for ExpoImage for portfolio items
 
 export default function ArtistDetailScreen() {
   const { id } = useLocalSearchParams();
@@ -29,56 +30,67 @@ export default function ArtistDetailScreen() {
   const [loading, setLoading] = useState(true);
   const [reviewsLoading, setReviewsLoading] = useState(true);
   const [showBookingForm, setShowBookingForm] = useState(false);
-  
-  useEffect(() => {
-    console.log('ArtistDetailScreen: EXPO_PUBLIC_API_BASE_URL:', process.env.EXPO_PUBLIC_API_BASE_URL);
-    const loadArtistData = async () => {
-      try {
-        setLoading(true);
-        
-        if (!id || typeof id !== 'string') {
-          Alert.alert('Error', 'Invalid artist ID');
-          router.back();
-          return;
-        }
-        
-        console.log(`Loading artist data for ID: ${id}`);
-        
-        // Fetch artist details
-        const artistData = await artistService.getArtistById(id);
-        setArtist(artistData);
-        console.log('Artist data loaded:', artistData.name);
-        
-        // Fetch artist portfolio
-        const rawPortfolioData: ArtistPortfolioAPIResponse = await artistService.getArtistPortfolio(id);
-        console.log(`ArtistDetailScreen: Raw portfolioData for artist ID ${id}:`, JSON.stringify(rawPortfolioData, null, 2));
-        
-        if (rawPortfolioData && rawPortfolioData.images && Array.isArray(rawPortfolioData.images)) {
-          const adaptedPortfolioItems: PortfolioItem[] = rawPortfolioData.images.map(image => ({
-            id: image.id,
-            artistId: rawPortfolioData.artistId, 
-            imageUrl: image.url, 
-            caption: image.caption, // Ensure caption is mapped
-          }));
-          setPortfolio(adaptedPortfolioItems);
-          console.log(`Adapted and loaded ${adaptedPortfolioItems.length} portfolio items. First item:`, JSON.stringify(adaptedPortfolioItems[0], null, 2));
-        } else {
-          setPortfolio([]);
-          console.log('No images found in portfolio data or portfolio data structure is not as expected.');
-        }
-        
-        // Fetch review stats
-        loadReviewStats(id);
-      } catch (error) {
-        console.error('Error loading artist data:', error);
-        Alert.alert('Error', 'Failed to load artist information');
-      } finally {
-        setLoading(false);
-      }
-    };
+  // const [avatarLoadError, setAvatarLoadError] = useState(false); // Removed as it's for the old simple image avatar
+
+  const loadArtistData = useCallback(async () => {
+    if (!id || typeof id !== 'string') {
+      Alert.alert('Error', 'Invalid artist ID');
+      if (router.canGoBack()) router.back(); else router.replace('/(tabs)/explore');
+      return;
+    }
     
-    loadArtistData();
-  }, [id]);
+    console.log(`ArtistDetailScreen: Focusing/Loading artist data for ID: ${id}`);
+    setLoading(true);
+    // setAvatarLoadError(false); // Removed
+
+    try {
+      const artistData = await artistService.getArtistById(id);
+      setArtist(artistData);
+      console.log('Artist data loaded:', artistData?.name);
+      // Log the avatarConfiguration to check if it's coming from the backend
+      console.log('ArtistDetailScreen: Received artist.avatarConfiguration:', JSON.stringify(artistData?.avatarConfiguration, null, 2));
+      
+      const rawPortfolioData: ArtistPortfolioAPIResponse = await artistService.getArtistPortfolio(id);
+      console.log(`ArtistDetailScreen: Raw portfolioData for artist ID ${id}:`, JSON.stringify(rawPortfolioData, null, 2));
+      
+      if (rawPortfolioData && rawPortfolioData.images && Array.isArray(rawPortfolioData.images)) {
+        const adaptedPortfolioItems: PortfolioItem[] = rawPortfolioData.images.map(image => ({
+          id: image.id,
+          artistId: rawPortfolioData.artistId, 
+          imageUrl: image.url, 
+          caption: image.caption,
+        }));
+        setPortfolio(adaptedPortfolioItems);
+        console.log(`Adapted and loaded ${adaptedPortfolioItems.length} portfolio items.`);
+      } else {
+        setPortfolio([]);
+        console.log('No images found in portfolio data or portfolio data structure is not as expected.');
+      }
+      
+      // Fetch review stats
+      loadReviewStats(id); // This function also sets its own loading states
+    } catch (error) {
+      console.error('Error loading artist data:', error);
+      Alert.alert('Error', 'Failed to load artist information. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  }, [id, router]);
+
+  useFocusEffect(
+    useCallback(() => {
+      console.log('ArtistDetailScreen: Screen focused, triggering data load for ID:', id);
+      loadArtistData();
+      
+      // Optional: If you want to check if the current artist is the logged-in user
+      // and potentially use data directly from AuthContext for some fields,
+      // you could add logic here. For now, always re-fetching.
+      if (user && id === user.id) {
+        console.log("Viewing own profile, data will be refreshed from server.");
+      }
+
+    }, [loadArtistData, id, user])
+  );
   
   const loadReviewStats = async (artistId: string) => {
     try {
@@ -219,14 +231,25 @@ export default function ArtistDetailScreen() {
         {/* Artist Profile Section */}
         <View style={styles.profileSection}>
           <View style={styles.profileHeader}>
-            {artist.avatarUrl ? (
-              <Image 
-                source={{ uri: artist.avatarUrl }} 
-                style={styles.avatar} 
+            {/* Updated Avatar Display Logic */}
+            {artist.avatarConfiguration ? (
+              <AvatarDisplayComponent
+                avatarConfiguration={artist.avatarConfiguration}
+                isEditing={false}
+                containerWidth={styles.avatar.width} 
+                containerHeight={styles.avatar.height}
               />
+            ) : artist.avatarUrl ? ( 
+                // Fallback for old avatarUrl - consider if this is needed or just show "No Avatar"
+                // For now, showing a distinct placeholder for legacy avatars.
+                <View style={styles.avatarPlaceholder}>
+                    <IconSymbol name="person.circle.fill" size={styles.avatar.width * 0.8} color="#888888" />
+                    <ThemedText style={{fontSize: 10, color: '#888888', textAlign: 'center'}}>Legacy Avatar</ThemedText>
+                </View>
             ) : (
               <View style={styles.avatarPlaceholder}>
-                <IconSymbol name="person.fill" size={40} color="#555555" />
+                <IconSymbol name="person.fill" size={styles.avatar.width * 0.8} color="#555555" />
+                <ThemedText style={{fontSize: 10, color: '#555555', textAlign: 'center'}}>No Avatar</ThemedText>
               </View>
             )}
             
@@ -239,9 +262,7 @@ export default function ArtistDetailScreen() {
               
               <View style={styles.ratingContainer}>
                 {reviewsLoading ? (
-                  <View style={styles.ratingPlaceholder}>
-                    <ThemedText style={styles.loadingText}>Loading ratings...</ThemedText>
-                  </View>
+                  <View style={styles.ratingPlaceholder}><ThemedText style={styles.loadingText}>Loading ratings...</ThemedText></View>
                 ) : reviewStats && reviewStats.totalReviews > 0 ? (
                   <>
                     <StarRating 
@@ -263,28 +284,20 @@ export default function ArtistDetailScreen() {
           
           <View style={styles.infoSection}>
             <ThemedText style={styles.sectionTitle}>About</ThemedText>
-            <ThemedText style={styles.bioText}>{artist.bio}</ThemedText>
+            <ThemedText style={styles.bioText}>{artist.bio || 'No bio provided.'}</ThemedText>
             
             <ThemedText style={styles.sectionTitle}>Specialties</ThemedText>
             <View style={styles.badgeContainer}>
-              {artist.specialties && artist.specialties.length > 0 ? (
-                artist.specialties.map((specialty, index) => (
-                  <Badge key={index} text={specialty} />
-                ))
-              ) : (
-                <ThemedText style={styles.emptyText}>No specialties listed</ThemedText>
-              )}
+              {artist.specialties && artist.specialties.length > 0 ? 
+                artist.specialties.map((specialty, index) => <Badge key={index} text={specialty} />) :
+                <ThemedText style={styles.emptyText}>No specialties listed</ThemedText>}
             </View>
             
             <ThemedText style={styles.sectionTitle}>Styles</ThemedText>
             <View style={styles.badgeContainer}>
-              {artist.styles && artist.styles.length > 0 ? (
-                artist.styles.map((style, index) => (
-                  <Badge key={index} text={style} />
-                ))
-              ) : (
-                <ThemedText style={styles.emptyText}>No styles listed</ThemedText>
-              )}
+              {artist.styles && artist.styles.length > 0 ?
+                artist.styles.map((style, index) => <Badge key={index} text={style} />) :
+                <ThemedText style={styles.emptyText}>No styles listed</ThemedText>}
             </View>
             
             <View style={styles.rowInfo}>
@@ -306,24 +319,17 @@ export default function ArtistDetailScreen() {
           
           {portfolio.length > 0 ? (
             <View style={styles.portfolioGrid}>
-              {portfolio.map((item, index) => {
-                console.log(`ArtistDetailScreen: Processing adapted portfolio item ${index}:`, JSON.stringify(item, null, 2));
-                
+              {portfolio.map((item) => {
                 const finalImageUrl = item.imageUrl.startsWith('http') 
                   ? item.imageUrl 
                   : `${process.env.EXPO_PUBLIC_API_BASE_URL || ''}${item.imageUrl}`;
-                
-                console.log(`ArtistDetailScreen: Attempting to load portfolio image ${index}: ${finalImageUrl}`);
-
                 return (
                   <TouchableFix key={item.id} style={styles.portfolioItem}>
-                    <Image 
+                    <ExpoImage // Assuming ExpoImage is the intended component here
                       source={{ uri: finalImageUrl }} 
                       style={styles.portfolioImage} 
-                      resizeMode="cover"
-                      onError={(e) => {
-                        console.error(`Failed to load portfolio image ${finalImageUrl}:`, e.nativeEvent.error);
-                      }}
+                      contentFit="cover" // Changed from resizeMode
+                      onError={(e) => console.error(`Failed to load portfolio image ${finalImageUrl}:`, e.error)} // Corrected expo-image error logging
                     />
                     {/* Display the caption */}
                     {item.caption && (
@@ -346,7 +352,7 @@ export default function ArtistDetailScreen() {
             <ArtistReviewsSection 
               artistId={artist.id}
               artistName={artist.name}
-              canLeaveReview={true}
+              canLeaveReview={true} // This should probably be dynamic based on user relationship
               maxPreviewReviews={10}
             />
           )}
@@ -388,15 +394,17 @@ export default function ArtistDetailScreen() {
               <IconSymbol name="xmark.circle.fill" size={24} color="#AAAAAA" />
             </TouchableOpacity>
             
-            <BookingForm
-              artistId={artist.id}
-              onSuccess={() => {
-                setShowBookingForm(false);
-                // Navigate to bookings page
-                router.push('/(tabs)/bookings');
-              }}
-              onCancel={() => setShowBookingForm(false)}
-            />
+            {artist && ( // Ensure artist is not null before rendering BookingForm
+              <BookingForm
+                artistId={artist.id}
+                onSuccess={() => {
+                  setShowBookingForm(false);
+                  // Navigate to bookings page
+                  router.push('/(tabs)/bookings');
+                }}
+                onCancel={() => setShowBookingForm(false)}
+              />
+            )}
           </View>
         </View>
       </Modal>
@@ -405,239 +413,56 @@ export default function ArtistDetailScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
+  container: { flex: 1 },
+  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  header: { padding: 16, position: 'absolute', top: 0, left: 0, right: 0, zIndex: 1, paddingTop: Platform.OS === 'android' ? 40 : 20 }, // Added paddingTop for status bar
+  backButton: { width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', alignItems: 'center' },
+  profileSection: { paddingTop: 80 }, // Added paddingTop to account for absolute positioned header
+  profileHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 20, paddingHorizontal: 16 },
+  avatar: { width: 90, height: 90, borderRadius: 45, backgroundColor: '#333' }, // Added backgroundColor for placeholder
+  avatarPlaceholder: { width: 90, height: 90, borderRadius: 45, backgroundColor: '#333333', justifyContent: 'center', alignItems: 'center' },
+  profileInfo: { marginLeft: 16, flex: 1 },
+  nameText: { fontSize: 24, fontWeight: 'bold', marginBottom: 4 },
+  locationContainer: { flexDirection: 'row', alignItems: 'center', marginBottom: 4 },
+  locationText: { fontSize: 14, color: '#AAAAAA', marginLeft: 4 },
+  ratingContainer: { flexDirection: 'row', alignItems: 'center' },
+  ratingPlaceholder: { /* Style for loading text if needed */ },
+  loadingText: { color: '#AAAAAA', fontSize: 12 },
+  ratingText: { fontSize: 14, color: '#AAAAAA', marginLeft: 4 },
+  noRatingText: { fontSize: 14, color: '#AAAAAA', fontStyle: 'italic' },
+  infoSection: { backgroundColor: '#1C1C1E', borderRadius: 12, padding: 16, marginHorizontal: 16, marginBottom: 20 }, // Darker background, more padding
+  sectionTitle: { fontSize: 18, fontWeight: '600', marginBottom: 12, color: '#EFEFF0' }, // Slightly bolder, lighter color
+  bioText: { fontSize: 14, lineHeight: 21, marginBottom: 16, color: '#C7C7CC' }, // Lighter color
+  emptyText: { fontSize: 14, color: '#8E8E93', fontStyle: 'italic', marginBottom: 8 }, // Adjusted color
+  badgeContainer: { flexDirection: 'row', flexWrap: 'wrap', marginBottom: 16 },
+  badge: { backgroundColor: '#3A3A3C', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16, marginRight: 8, marginBottom: 8 }, // Darker badge
+  badgeText: { fontSize: 12, color: '#EFEFF0' }, // Lighter text
+  rowInfo: { flexDirection: 'row', justifyContent: 'space-around', marginTop: 8 }, // Space around for better distribution
+  infoItem: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#2C2C2E', padding: 8, borderRadius: 8, flex: 1, marginHorizontal: 4 }, // Individual background, flex
+  infoText: { fontSize: 14, marginLeft: 6, color: '#C7C7CC' }, // Lighter text
+  portfolioSection: { paddingHorizontal: 16, marginBottom: 20 },
+  portfolioGrid: { flexDirection: 'row', flexWrap: 'wrap', marginHorizontal: -4 }, // Negative margin to counteract item margin
+  portfolioItem: { width: '48%', aspectRatio: 1, margin: '1%', borderRadius: 8, overflow: 'hidden', backgroundColor: '#333', position: 'relative' },
+  portfolioImage: { width: '100%', height: '100%' },
+  captionOverlay: { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: 'rgba(0,0,0,0.7)', paddingVertical: 5, paddingHorizontal: 8 },
+  captionText: { color: '#FFFFFF', fontSize: 11, textAlign: 'center' },
+  emptyPortfolioText: { fontStyle: 'italic', color: '#8E8E93', marginTop: 8, textAlign: 'center', padding: 16 }, // Centered, more padding
+  reviewsSection: { marginHorizontal: 16, marginBottom: 20 },
+  actionButtonsContainer: { paddingHorizontal: 16, paddingBottom: 32, paddingTop: 8, gap: 12 },
+  bookButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: '#0A84FF', paddingVertical: 14, borderRadius: 12, minHeight: 50, elevation: 2, shadowColor: '#007AFF', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.2, shadowRadius: 4 },
+  bookButtonText: { color: '#FFFFFF', fontWeight: '600', fontSize: 16, marginLeft: 8 },
+  messageButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: 'transparent', borderWidth: 1.5, borderColor: '#0A84FF', paddingVertical: 14, borderRadius: 12, minHeight: 50 },
+  messageButtonText: { color: '#0A84FF', fontWeight: '600', fontSize: 16, marginLeft: 8 },
+  modalContainer: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.6)' },
+  modalContent: { 
+    backgroundColor: '#1C1C1E', 
+    borderTopLeftRadius: 20, 
+    borderTopRightRadius: 20, 
+    padding: 0, // Changed from padding: 20, BookingForm now handles its internal padding
+    height: '85%', // Changed from maxHeight: '85%'
+    width: '100%', // Ensure full width
   },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  header: {
-    padding: 16,
-  },
-  backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(0, 0, 0, 0.3)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  profileSection: {
-    padding: 16,
-  },
-  profileHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  avatar: {
-    width: 90,
-    height: 90,
-    borderRadius: 45,
-  },
-  avatarPlaceholder: {
-    width: 90,
-    height: 90,
-    borderRadius: 45,
-    backgroundColor: '#333333',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  profileInfo: {
-    marginLeft: 16,
-    flex: 1,
-  },
-  nameText: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    marginBottom: 4,
-  },
-  locationContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 4,
-  },
-  locationText: {
-    fontSize: 14,
-    color: '#AAAAAA',
-    marginLeft: 4,
-  },
-  ratingContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  ratingText: {
-    fontSize: 14,
-    color: '#AAAAAA',
-    marginLeft: 4,
-  },
-  infoSection: {
-    backgroundColor: '#1f1f1f',
-    borderRadius: 8,
-    padding: 16,
-    marginBottom: 16,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 8,
-  },
-  bioText: {
-    fontSize: 14,
-    lineHeight: 20,
-    marginBottom: 16,
-  },
-  emptyText: {
-    fontSize: 14,
-    color: '#999999',
-    fontStyle: 'italic',
-    marginBottom: 8,
-  },
-  badgeContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    marginBottom: 16,
-  },
-  badge: {
-    backgroundColor: '#333333',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 16,
-    marginRight: 8,
-    marginBottom: 8,
-  },
-  badgeText: {
-    fontSize: 12,
-  },
-  rowInfo: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: 8,
-  },
-  infoItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  infoText: {
-    fontSize: 14,
-    marginLeft: 6,
-  },
-  portfolioSection: {
-    padding: 16,
-  },
-  portfolioGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    marginHorizontal: -4,
-  },
-  portfolioItem: {
-    width: '48%', // Adjust for 2 columns with some spacing
-    aspectRatio: 1, // Square items
-    margin: '1%', // Spacing between items
-    borderRadius: 8,
-    overflow: 'hidden', // Important for borderRadius on Image to work with overlay
-    backgroundColor: '#333', // Placeholder while image loads
-    position: 'relative', // Needed for absolute positioning of caption overlay
-  },
-  portfolioImage: {
-    width: '100%',
-    height: '100%',
-  },
-  captionOverlay: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
-    paddingVertical: 4,
-    paddingHorizontal: 8,
-  },
-  captionText: {
-    color: '#FFFFFF',
-    fontSize: 12,
-    textAlign: 'center',
-  },
-  emptyPortfolioText: {
-    fontStyle: 'italic',
-    color: '#999999',
-    marginTop: 8,
-  },
-  actionButtonsContainer: {
-    paddingHorizontal: 16,
-    paddingBottom: 32,
-    paddingTop: 8,
-    gap: 12,
-  },
-  bookButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#007AFF',
-    padding: 16,
-    borderRadius: 12,
-    minHeight: 54,
-    elevation: 2,
-    shadowColor: '#007AFF',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-  },
-  bookButtonText: {
-    color: '#FFFFFF',
-    fontWeight: '600',
-    fontSize: 16,
-    marginLeft: 8,
-  },
-  messageButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#1A1A1A',
-    borderWidth: 1.5,
-    borderColor: '#007AFF',
-    padding: 16,
-    borderRadius: 12,
-    minHeight: 54,
-  },
-  messageButtonText: {
-    color: '#007AFF',
-    fontWeight: '600',
-    fontSize: 16,
-    marginLeft: 8,
-  },
-  modalContainer: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
-    justifyContent: 'center',
-  },
-  modalContent: {
-    backgroundColor: '#121212',
-    borderRadius: 8,
-    marginHorizontal: 16,
-    maxHeight: '80%',
-  },
-  closeButton: {
-    position: 'absolute',
-    top: 12,
-    right: 12,
-    zIndex: 1,
-  },
-  ratingPlaceholder: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  loadingText: {
-    fontSize: 14,
-    color: '#AAAAAA',
-  },
-  noRatingText: {
-    fontSize: 14,
-    color: '#AAAAAA',
-    fontStyle: 'italic',
-  },
-  reviewsSection: {
-    padding: 16,
-  },
+  closeButton: { alignSelf: 'flex-end', padding: 8, /* marginBottom: 10, */ position: 'absolute', top: 10, right: 10, zIndex: 1 }, // Removed marginBottom as padding is now in BookingForm
+  // Added for ExpoImage in portfolio
+  ExpoImage: { width: '100%', height: '100%' },
 });

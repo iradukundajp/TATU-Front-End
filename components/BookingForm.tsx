@@ -196,7 +196,30 @@ export default function BookingForm({ artistId, onSuccess, onCancel }: BookingFo
             style={styles.retryButton}
             onPress={() => {
               setApiError(null);
-              loadAvailableSlots(selectedDate);
+              // It's better to call loadData here to re-fetch artist info as well
+              // if the initial load failed, not just slots.
+              // For now, keeping as loadAvailableSlots if that was the primary failure point.
+              // Consider a more robust retry mechanism if needed.
+              const loadData = async () => { // Renamed from original to avoid conflict
+                try {
+                  setLoading(true);
+                  setApiError(null);
+                  const artistData = await artistService.getArtistById(artistId);
+                  if (!artistData) {
+                    setApiError("Failed to load artist information");
+                    setLoading(false);
+                    return;
+                  }
+                  setArtist(artistData);
+                  await loadAvailableSlots(selectedDate);
+                } catch (error) {
+                  console.error('Error reloading data:', error);
+                  setApiError("Failed to connect to the server. Please check your connection and try again.");
+                } finally {
+                  setLoading(false);
+                }
+              };
+              loadData();
             }}
           >
             <ThemedText style={styles.retryButtonText}>Retry</ThemedText>
@@ -223,146 +246,141 @@ export default function BookingForm({ artistId, onSuccess, onCancel }: BookingFo
   }
 
   return (
-    <ThemedView style={styles.container}>
-      <ThemedText type="subtitle" style={styles.title}>Book an Appointment with {artist?.name}</ThemedText>
-      
-      {/* Date Selection */}
-      <View style={styles.fieldGroup}>
-        <ThemedText>Select Date</ThemedText>
-        <TouchableFix style={styles.dateSelector} onPress={() => setShowDateModal(true)}>
-          <ThemedText>
-            {formatDate(selectedDate)}
-          </ThemedText>
-          <IconSymbol name="calendar" size={20} color="#007AFF" />
-        </TouchableFix>
+    <ThemedView style={styles.formContainer}> 
+      <ScrollView 
+        style={styles.scrollView} 
+        contentContainerStyle={styles.scrollViewContent}
+        showsVerticalScrollIndicator={false}
+      >
+        <ThemedText type="subtitle" style={styles.title}>
+          {`Book an Appointment with ${artist?.name || 'the artist'}`}
+        </ThemedText>
         
-        {/* Custom Date Selection Modal */}
-        <Modal
-          visible={showDateModal}
-          transparent={true}
-          animationType="slide"
-          onRequestClose={() => setShowDateModal(false)}
-        >
-          <View style={styles.modalOverlay}>
-            <View style={styles.modalContent}>
-              <View style={styles.modalHeader}>
-                <ThemedText style={styles.modalTitle}>Select Date</ThemedText>
-                <TouchableOpacity
-                  onPress={() => setShowDateModal(false)}
-                  style={styles.closeButton}
-                >
-                  <IconSymbol name="xmark.circle.fill" size={24} color="#999" />
-                </TouchableOpacity>
+        {/* Date Selection */}
+        <View style={styles.fieldGroup}>
+          <ThemedText>Select Date</ThemedText>
+          <TouchableFix style={styles.dateSelector} onPress={() => setShowDateModal(true)}>
+            <ThemedText>
+              {formatDate(selectedDate)}
+            </ThemedText>
+            <IconSymbol name="calendar" size={20} color="#007AFF" />
+          </TouchableFix>
+          
+          {/* Custom Date Selection Modal */}
+          <Modal
+            visible={showDateModal}
+            transparent={true}
+            animationType="slide"
+            onRequestClose={() => setShowDateModal(false)}
+          >
+            <View style={styles.modalOverlay}>
+              <View style={styles.modalContent}>
+                <View style={styles.modalHeader}>
+                  <ThemedText style={styles.modalTitle}>Select Date</ThemedText>
+                  <TouchableOpacity
+                    onPress={() => setShowDateModal(false)}
+                    style={styles.closeButton}
+                  >
+                    <IconSymbol name="xmark.circle.fill" size={24} color="#999" />
+                  </TouchableOpacity>
+                </View>
+                
+                <ScrollView style={styles.dateList}>
+                  {dateOptions.map((date, index) => (
+                    <TouchableFix
+                      key={index}
+                      style={[
+                        styles.dateOption,
+                        date.toDateString() === selectedDate.toDateString() && styles.selectedDateOption
+                      ]}
+                      onPress={() => handleDateSelect(date)}
+                    >
+                      <ThemedText
+                        style={[
+                          styles.dateOptionText,
+                          date.toDateString() === selectedDate.toDateString() && styles.selectedDateOptionText
+                        ]}
+                      >
+                        {formatDate(date)}
+                      </ThemedText>
+                    </TouchableFix>
+                  ))}
+                </ScrollView>
               </View>
-              
-              <ScrollView style={styles.dateList}>
-                {dateOptions.map((date, index) => (
+            </View>
+          </Modal>
+        </View>
+        
+        {/* Time Slot Selection */}
+        <View style={styles.fieldGroup}>
+          <ThemedText>Select Time</ThemedText>
+          
+          {availableSlots.length > 0 ? (
+            <View style={styles.timeSlotContainer}>
+              {availableSlots.map(slot => (
+                Array.from(
+                  { length: slot.endHour - slot.startHour },
+                  (_, i) => slot.startHour + i
+                ).map(hour => (
                   <TouchableFix
-                    key={index}
+                    key={hour}
                     style={[
-                      styles.dateOption,
-                      date.toDateString() === selectedDate.toDateString() && styles.selectedDateOption
+                      styles.timeSlot,
+                      selectedTimeSlot === hour && styles.selectedTimeSlot
                     ]}
-                    onPress={() => handleDateSelect(date)}
+                    onPress={() => setSelectedTimeSlot(hour)}
                   >
                     <ThemedText
                       style={[
-                        styles.dateOptionText,
-                        date.toDateString() === selectedDate.toDateString() && styles.selectedDateOptionText
+                        styles.timeSlotText,
+                        selectedTimeSlot === hour && styles.selectedTimeSlotText
                       ]}
                     >
-                      {formatDate(date)}
+                      {getTimeDisplay(hour)}
                     </ThemedText>
                   </TouchableFix>
-                ))}
-              </ScrollView>
+                ))
+              ))}
             </View>
-          </View>
-        </Modal>
-      </View>
-      
-      {/* Time Slot Selection */}
-      <View style={styles.fieldGroup}>
-        <ThemedText>Select Time</ThemedText>
+          ) : (
+            <ThemedText style={styles.noSlotsText}>
+              No available time slots for this date
+            </ThemedText>
+          )}
+        </View>
         
-        {availableSlots.length > 0 ? (
-          <View style={styles.timeSlotContainer}>
-            {availableSlots.map(slot => (
-              Array.from(
-                { length: slot.endHour - slot.startHour },
-                (_, i) => slot.startHour + i
-              ).map(hour => (
-                <TouchableFix
-                  key={hour}
-                  style={[
-                    styles.timeSlot,
-                    selectedTimeSlot === hour && styles.selectedTimeSlot
-                  ]}
-                  onPress={() => setSelectedTimeSlot(hour)}
-                >
-                  <ThemedText
-                    style={[
-                      styles.timeSlotText,
-                      selectedTimeSlot === hour && styles.selectedTimeSlotText
-                    ]}
-                  >
-                    {getTimeDisplay(hour)}
-                  </ThemedText>
-                </TouchableFix>
-              ))
-            ))}
-          </View>
-        ) : (
-          <ThemedText style={styles.noSlotsText}>
-            No available time slots for this date
-          </ThemedText>
-        )}
-      </View>
-      
-      {/* Duration */}
-      <View style={styles.fieldGroup}>
-        <ThemedText>Duration (minutes)</ThemedText>
-        <TextInput
-          style={styles.input}
-          value={duration}
-          onChangeText={setDuration}
-          keyboardType="numeric"
-          placeholder="Enter duration (e.g., 60)"
-          placeholderTextColor="#777"
-        />
-      </View>
-      
-      {/* Note */}
-      <View style={styles.fieldGroup}>
-        <ThemedText>Note (optional)</ThemedText>
-        <TextInput
-          style={[styles.input, styles.textArea]}
-          value={note}
-          onChangeText={setNote}
-          placeholder="Add any details about your appointment"
-          placeholderTextColor="#777"
-          multiline
-          numberOfLines={4}
-        />
-      </View>
-      
-      {/* Submit Button */}
-      <View style={styles.buttonContainer}>
-        <TouchableFix
-          style={styles.cancelButton}
-          onPress={onCancel}
+        {/* Duration */}
+        <View style={styles.fieldGroup}>
+          <ThemedText>Duration (minutes)</ThemedText>
+          <TextInput
+            style={styles.input}
+            value={duration}
+            onChangeText={setDuration}
+            keyboardType="numeric"
+            placeholder="Enter duration (e.g., 60)"
+            placeholderTextColor="#777"
+          />
+        </View>
+        
+        {/* Note */}
+        <View style={styles.fieldGroup}>
+          <ThemedText>Note (optional)</ThemedText>
+          <TextInput
+            style={styles.input}
+            value={note}
+            onChangeText={setNote}
+            placeholder="Add any details about your appointment"
+            placeholderTextColor="#777"
+            multiline
+            numberOfLines={4}
+          />
+        </View>
+        
+        {/* Submit Button */}
+        <TouchableFix 
+          style={[styles.button, styles.submitButton]} 
+          onPress={handleSubmit} 
           disabled={submitting}
-        >
-          <ThemedText style={styles.cancelButtonText}>Cancel</ThemedText>
-        </TouchableFix>
-        
-        <TouchableFix
-          style={[
-            styles.submitButton,
-            (!selectedTimeSlot || submitting) && styles.disabledButton
-          ]}
-          onPress={handleSubmit}
-          disabled={!selectedTimeSlot || submitting}
         >
           {submitting ? (
             <ActivityIndicator size="small" color="#FFFFFF" />
@@ -370,15 +388,36 @@ export default function BookingForm({ artistId, onSuccess, onCancel }: BookingFo
             <ThemedText style={styles.submitButtonText}>Book Appointment</ThemedText>
           )}
         </TouchableFix>
-      </View>
+        
+        {/* Cancel Button */}
+        {onCancel && (
+          <TouchableFix style={[styles.button, styles.cancelButton]} onPress={onCancel} disabled={submitting}>
+            <ThemedText style={styles.cancelButtonText}>Cancel</ThemedText>
+          </TouchableFix>
+        )}
+      </ScrollView>
     </ThemedView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  formContainer: { // New style for the root view of the form
+    flex: 1, // Allows ScrollView to expand
+    backgroundColor: '#1C1C1E', // Match modal background from [id].tsx
+  },
+  scrollView: {
+    flex: 1, // Ensures ScrollView takes available space within formContainer
+  },
+  scrollViewContent: {
+    padding: 20, // Replicates the padding from modalContent in [id].tsx
+    paddingBottom: 40, // Extra padding at the bottom for scroll comfort
+  },
+  container: { // Original container style, might be used by loading/error states
     flex: 1,
-    padding: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+    backgroundColor: '#1C1C1E', // Match modal background
   },
   loadingContainer: {
     flex: 1,
@@ -386,16 +425,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   loadingText: {
-    marginTop: 16,
-    textAlign: 'center',
+    marginTop: 10,
+    color: '#FFFFFF',
   },
   title: {
     fontSize: 20,
     fontWeight: 'bold',
-    marginBottom: 20,
+    marginBottom: 24, // Increased margin
+    textAlign: 'center',
   },
   fieldGroup: {
-    marginBottom: 20,
+    marginBottom: 20, // Increased margin
   },
   dateSelector: {
     flexDirection: 'row',
@@ -423,22 +463,27 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 16,
+    marginBottom: 15,
     borderBottomWidth: 1,
-    borderBottomColor: '#333',
+    borderBottomColor: '#444444',
+    paddingBottom: 10,
   },
   modalTitle: {
     fontSize: 18,
-    fontWeight: 'bold',
+    fontWeight: '600',
+    color: '#EFEFF0',
   },
-  closeButton: {
-    padding: 4,
+  closeButton: { // For the date picker modal's close button
+     padding: 5,
   },
   dateList: {
     padding: 16,
   },
   dateOption: {
     padding: 12,
+    paddingVertical: 15, // Increased padding
+    borderBottomWidth: 1,
+    borderBottomColor: '#3A3A3C',
     borderRadius: 8,
     marginBottom: 8,
     backgroundColor: '#1f1f1f',
@@ -448,77 +493,79 @@ const styles = StyleSheet.create({
   },
   dateOptionText: {
     fontSize: 16,
+    color: '#EFEFF0',
   },
   selectedDateOptionText: {
+    color: '#FFFFFF',
     fontWeight: 'bold',
   },
   timeSlotContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    marginTop: 8,
+    justifyContent: 'space-between', // Better distribution
+  },
+  noSlotsText: { // Added definition for noSlotsText
+    textAlign: 'center',
+    color: '#AAAAAA',
+    fontStyle: 'italic',
+    paddingVertical: 20,
   },
   timeSlot: {
     padding: 10,
-    backgroundColor: '#1f1f1f',
+    paddingVertical: 12, // Increased padding
+    paddingHorizontal: 10,
+    borderWidth: 1,
+    borderColor: '#555555', // Clearer border
     borderRadius: 8,
-    margin: 4,
+    marginBottom: 10,
+    minWidth: '30%', // Ensure at least 3 slots per row
+    alignItems: 'center',
+    backgroundColor: '#1f1f1f',
   },
   selectedTimeSlot: {
     backgroundColor: '#007AFF',
+    borderColor: '#007AFF',
   },
   timeSlotText: {
-    color: '#FFFFFF',
+    color: '#EFEFF0',
   },
   selectedTimeSlotText: {
+    color: '#FFFFFF',
     fontWeight: 'bold',
   },
-  noSlotsText: {
-    marginTop: 8,
-    fontStyle: 'italic',
-    color: '#999',
-  },
   input: {
-    backgroundColor: '#1f1f1f',
-    borderRadius: 8,
-    padding: 12,
-    color: '#FFFFFF',
-    marginTop: 8,
-  },
-  textArea: {
-    minHeight: 100,
-    textAlignVertical: 'top',
-  },
-  buttonContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: 20,
-  },
-  cancelButton: {
-    flex: 1,
-    padding: 12,
+    backgroundColor: '#2C2C2E', // Darker input background
+    color: '#EFEFF0', // Lighter text
+    paddingHorizontal: 15, // Increased padding
+    paddingVertical: 12,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#666',
-    marginRight: 8,
-    alignItems: 'center',
+    borderColor: '#444444', // Subtle border
+    fontSize: 16,
   },
-  cancelButtonText: {
-    color: '#FFFFFF',
+  button: {
+    paddingVertical: 15, // Increased padding
+    borderRadius: 10, // More rounded
+    alignItems: 'center',
+    marginTop: 10, // Spacing between buttons
   },
   submitButton: {
-    flex: 2,
-    padding: 12,
-    borderRadius: 8,
-    backgroundColor: '#007AFF',
-    marginLeft: 8,
-    alignItems: 'center',
-  },
-  disabledButton: {
-    backgroundColor: 'rgba(0, 122, 255, 0.5)',
+    backgroundColor: '#0A84FF', // Consistent with [id].tsx
   },
   submitButtonText: {
     color: '#FFFFFF',
-    fontWeight: 'bold',
+    fontWeight: '600',
+    fontSize: 16,
+  },
+  cancelButton: { 
+    backgroundColor: 'transparent',
+    borderWidth: 1.5,
+    borderColor: '#0A84FF', // Consistent with [id].tsx message button
+  },
+  cancelButtonText: { 
+    color: '#0A84FF', // Consistent with [id].tsx message button
+    fontWeight: '600',
+    fontSize: 16,
   },
   errorContainer: {
     flex: 1,
@@ -527,27 +574,25 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   errorTitle: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: 'bold',
-    marginTop: 16,
-    marginBottom: 8,
+    color: '#FFD700', // Gold/Yellow for error emphasis
+    marginBottom: 10,
+    textAlign: 'center',
   },
   errorText: {
     textAlign: 'center',
-    marginBottom: 24,
-    color: '#999',
+    marginBottom: 20,
   },
   retryButton: {
     backgroundColor: '#007AFF',
     paddingVertical: 12,
-    paddingHorizontal: 20,
+    paddingHorizontal: 30,
     borderRadius: 8,
-    marginBottom: 12,
-    width: '100%',
-    alignItems: 'center',
+    marginBottom: 10,
   },
   retryButtonText: {
-    color: 'white',
+    color: '#FFFFFF',
     fontWeight: 'bold',
   },
 });

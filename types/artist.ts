@@ -1,11 +1,13 @@
 import { User } from './auth';
+import { AvatarConfiguration } from './avatar'; // Import AvatarConfiguration
 
 export interface Artist extends User {
   id: string;
   name: string;
   bio: string;
   location: string;
-  avatarUrl?: string;
+  avatarUrl?: string; // Keep for potential fallback or simple image use elsewhere
+  avatarConfiguration?: AvatarConfiguration; // Changed to match User interface
   specialties: string[];
   styles: string[];
   experience: number;
