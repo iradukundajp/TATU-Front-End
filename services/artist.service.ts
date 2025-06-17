@@ -1,7 +1,8 @@
 import { api } from './api.service';
 import { Artist, ArtistSearchParams } from '../types/artist';
 import { Booking, CreateBookingData } from '../types/booking';
-import { PortfolioItem } from '../types/portfolio';
+// import { PortfolioItem } from '../types/portfolio'; // Old import
+import { PortfolioItem, ArtistPortfolioAPIResponse } from '../types/portfolio'; // Import new type
 import * as bookingService from './booking.service';
 
 /**
@@ -11,9 +12,34 @@ import * as bookingService from './booking.service';
  */
 export const searchArtists = async (params?: ArtistSearchParams): Promise<Artist[]> => {
   try {
-    // Fixed: Use /api/users endpoint with isArtist filter
-    const searchParams = { ...params, isArtist: true };
-    return await api.get<Artist[]>('/api/users', { params: searchParams });
+    const apiParams: Record<string, any> = { isArtist: true };
+    if (params?.name) {
+      apiParams.search = params.name;
+    }
+    if (params?.location) {
+      apiParams.location = params.location;
+    }
+    if (params?.specialty) {
+      apiParams.specialty = params.specialty;
+    }
+    if (params?.style) {
+      apiParams.style = params.style;
+    }
+    if (params?.minRating) {
+      apiParams.minRating = params.minRating;
+    }
+    if (params?.page) {
+      apiParams.page = params.page;
+    }
+    if (params?.limit) {
+      apiParams.limit = params.limit;
+    }
+
+    console.log('Searching artists with params:', apiParams);
+    // The API /api/users returns an object { users: Artist[], pagination: ... }
+    // We need to extract the users array.
+    const response = await api.get<{ users: Artist[], pagination: any }>('/api/users', { params: apiParams });
+    return response.users; // Return the array of artists directly
   } catch (error) {
     console.error('Error searching artists:', error);
     throw error;
@@ -58,10 +84,10 @@ export const getArtistById = async (artistId: string): Promise<Artist> => {
  * @param artistId - Artist ID
  * @returns Promise with portfolio items
  */
-export const getArtistPortfolio = async (artistId: string): Promise<PortfolioItem[]> => {
+export const getArtistPortfolio = async (artistId: string): Promise<ArtistPortfolioAPIResponse> => {
   try {
-    // Fixed: Use the correct portfolio endpoint
-    return await api.get<PortfolioItem[]>(`/api/portfolio/artist/${artistId}`);
+    // Use the correct portfolio endpoint and the new response type
+    return await api.get<ArtistPortfolioAPIResponse>(`/api/portfolio/artist/${artistId}`);
   } catch (error) {
     console.error('Error fetching artist portfolio:', error);
     throw error;

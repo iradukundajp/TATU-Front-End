@@ -1,6 +1,6 @@
 // filepath: c:/Users/sahir/OneDrive/Documents/Desktop/THOMAS MORE/2ND YEAR/Project Lab/TATU-Front-END/app/avatar-config.tsx
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, ScrollView, View, TextInput, Image, Alert, TouchableOpacity, Switch, Platform, ImageSourcePropType, Dimensions } from 'react-native';
+import { StyleSheet, ScrollView, View, TextInput, Image, Alert, TouchableOpacity, Switch, Platform, ImageSourcePropType, Dimensions, Text } from 'react-native'; // Added Text
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { TouchableFix } from '@/components/TouchableFix';
@@ -8,21 +8,18 @@ import { IconSymbol } from '@/components/ui/IconSymbol';
 import { useAuth } from '@/contexts/AuthContext';
 import * as ImagePicker from 'expo-image-picker';
 import AvatarDisplayComponent from '../components/AvatarDisplayComponent';
-// REMOVED BodyZone from import
 import { AvatarConfiguration, TattooPlacement, SelectableTattooItem } from '@/types/avatar';
-import { router } from 'expo-router'; // For navigation
-import { api } from '@/services/api.service'; // Import the api service
+import { router } from 'expo-router';
+import { api } from '@/services/api.service';
 import Slider from '@react-native-community/slider';
 import Animated, { useSharedValue, useAnimatedStyle, withTiming, runOnJS } from 'react-native-reanimated';
 import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
 
-// Define Mannequin Types (can be moved to a constants file if shared)
 const MANNEQUIN_TYPES = [
   { id: 'male_standard', label: 'Male' },
   { id: 'female_standard', label: 'Female' },
 ];
 
-// Define your static tattoos here (can be moved to a constants file if shared)
 const STATIC_TATTOOS_FOR_SELECTION: SelectableTattooItem[] = [
   {
     id: 'tattoo_1',
@@ -37,50 +34,72 @@ const STATIC_TATTOOS_FOR_SELECTION: SelectableTattooItem[] = [
   // Add more static tattoos as needed
 ];
 
-// Increased dimensions for the AvatarDisplayComponent on this dedicated screen
-const AVATAR_DISPLAY_WIDTH = Dimensions.get('window').width > 600 ? 450 : Dimensions.get('window').width * 0.9;
-const AVATAR_DISPLAY_HEIGHT = AVATAR_DISPLAY_WIDTH * 1.5; // Maintain 2:3 aspect ratio
+const AVATAR_DISPLAY_WIDTH = Dimensions.get('window').width > 600 ? 400 : Dimensions.get('window').width * 0.9; // Slightly reduced for more control space
+const AVATAR_DISPLAY_HEIGHT = AVATAR_DISPLAY_WIDTH * 1.5;
 
 export default function AvatarConfigScreen() {
   const { user, updateAvatarConfiguration } = useAuth();
   const [loading, setLoading] = useState(false);
   const [editableAvatarConfig, setEditableAvatarConfig] = useState<AvatarConfiguration | undefined>(undefined);
-  const [isAvatarInteracting, setIsAvatarInteracting] = useState(false); // This now covers tattoo interaction, mannequin zoom, and mannequin pan
+  const [initialAvatarConfigForComparison, setInitialAvatarConfigForComparison] = useState<AvatarConfiguration | null>(null);
+  const [isAvatarInteracting, setIsAvatarInteracting] = useState(false);
   const [selectedTattooForControls, setSelectedTattooForControls] = useState<TattooPlacement | null>(null);
-  const [mannequinZoom, setMannequinZoom] = useState(1); // New state for mannequin zoom
+  const [mannequinZoom, setMannequinZoom] = useState(1);
 
-  // Shared values for mannequin panning
   const mannequinTranslateX = useSharedValue(0);
   const mannequinTranslateY = useSharedValue(0);
   const mannequinBaseTranslateX = useSharedValue(0);
   const mannequinBaseTranslateY = useSharedValue(0);
 
-
   const showInstructions = () => {
     Alert.alert(
       "How to Customize Your Avatar",
-      "- Select Mannequin: Tap \'Male\' or \'Female\'.\n" +
-      "- Add Tattoos: Select from the \'Add Tattoo\' list or upload your own.\n" +
-      "- Adjust Tattoos: On the mannequin, tap and drag to move a tattoo. Use two fingers to pinch-to-zoom (resize) or twist (rotate).\n" +
-      "- Remove Tattoos: Tap the trash icon next to a tattoo in the \'Placed Tattoos\' list.\n" +
-      "- Save: Tap the \'Save\' button to keep your changes.",
+      "- Select Mannequin: Tap 'Male' or 'Female'.\\n" +
+      "- Add Tattoos: Select from the 'Add Tattoo' list or upload your own.\\n" +
+      "- Adjust Tattoos: On the mannequin, tap and drag to move a tattoo. Use two fingers to pinch-to-zoom (resize) or twist (rotate). You can also use the sliders for fine adjustments after selecting a tattoo from the 'Placed Tattoos' list.\\n" +
+      "- Remove Tattoos: Tap the trash icon next to a tattoo in the 'Placed Tattoos' list.\\n" +
+      "- Save: Tap the 'Save Configuration' button.",
       [{ text: "OK" }]
     );
   };
 
   useEffect(() => {
+    let initialConfig: AvatarConfiguration;
     if (user?.avatarConfiguration) {
-      setEditableAvatarConfig({
+      initialConfig = {
         ...user.avatarConfiguration,
-        tattoos: user.avatarConfiguration.tattoos || [], // Ensure tattoos array exists
-      });
+        tattoos: user.avatarConfiguration.tattoos || [],
+      };
     } else {
-      setEditableAvatarConfig({
-        baseMannequinId: MANNEQUIN_TYPES[0].id, // Default mannequin
+      initialConfig = {
+        baseMannequinId: MANNEQUIN_TYPES[0].id,
         tattoos: [],
-      });
+      };
     }
+    setEditableAvatarConfig(initialConfig);
+    setInitialAvatarConfigForComparison(initialConfig); // Store for comparison
   }, [user?.avatarConfiguration]);
+
+  const haveChangesOccurred = () => {
+    if (!initialAvatarConfigForComparison || !editableAvatarConfig) return false;
+    // A simple string comparison; for more complex objects, a deep comparison library might be better
+    return JSON.stringify(initialAvatarConfigForComparison) !== JSON.stringify(editableAvatarConfig);
+  };
+
+  const handleDiscardChanges = () => {
+    if (haveChangesOccurred()) {
+      Alert.alert(
+        "Discard Changes?",
+        "You have unsaved changes. Are you sure you want to discard them and go back?",
+        [
+          { text: "Cancel", style: "cancel" },
+          { text: "Discard", style: "destructive", onPress: () => router.back() },
+        ]
+      );
+    } else {
+      router.back();
+    }
+  };
 
   const handleSaveConfiguration = async () => {
     if (!editableAvatarConfig || !updateAvatarConfiguration) {
@@ -91,7 +110,7 @@ export default function AvatarConfigScreen() {
     try {
       await updateAvatarConfiguration(editableAvatarConfig);
       Alert.alert('Success', 'Avatar configuration saved!');
-      router.back(); // Go back to profile screen
+      router.back();
     } catch (error) {
       console.error('Error saving avatar configuration:', error);
       Alert.alert('Error', 'Failed to save avatar configuration.');
@@ -110,13 +129,7 @@ export default function AvatarConfigScreen() {
         tattooTitle: customImageUri ? 'Custom Tattoo' : tattooItem.title,
         imageRequire: customImageUri ? undefined : tattooItem.imageRequire,
         customImageUri: customImageUri,
-        x: 50, 
-        y: 40, 
-        width: 25, 
-        height: 25, 
-        initialWidth: 25, // Store initial width
-        initialHeight: 25, // Store initial height
-        rotation: 0,
+        x: 50, y: 40, width: 25, height: 25, initialWidth: 25, initialHeight: 25, rotation: 0,
         zIndex: currentTattoos.length + 1,
       };
       return { ...currentConfig, tattoos: [...currentTattoos, newPlacement] };
@@ -131,6 +144,10 @@ export default function AvatarConfigScreen() {
       );
       return { ...prevConfig, tattoos: updatedTattoos };
     });
+    // If the currently selected tattoo is being updated, refresh its state for the sliders
+    if (selectedTattooForControls && selectedTattooForControls.id === placementId) {
+        setSelectedTattooForControls(prev => prev ? { ...prev, ...updates } : null);
+    }
   };
 
   const handleRemoveTattoo = (placementIdToRemove: string) => {
@@ -139,72 +156,50 @@ export default function AvatarConfigScreen() {
       const updatedTattoos = prevConfig.tattoos.filter(tattoo => tattoo.id !== placementIdToRemove);
       return { ...prevConfig, tattoos: updatedTattoos };
     });
+    if (selectedTattooForControls && selectedTattooForControls.id === placementIdToRemove) {
+      setSelectedTattooForControls(null); // Deselect if removed
+    }
   };
 
   const handlePickCustomTattooImage = async () => {
-    setLoading(true); // Indicate loading state
+    setLoading(true);
     try {
       if (Platform.OS !== 'web') {
         const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
         if (status !== 'granted') {
           Alert.alert('Permission needed', 'Sorry, we need camera roll permissions.');
-          setLoading(false);
-          return;
+          setLoading(false); return;
         }
       }
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        quality: 0.8, // Compress image slightly
-        // allowsEditing: true, // Optional: if you want to allow basic editing
-        // aspect: [4, 3], // Optional: if you want to enforce an aspect ratio
+        mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.8,
       });
 
       if (!result.canceled && result.assets && result.assets.length > 0) {
         const asset = result.assets[0];
         const uri = asset.uri;
-        
-        // Create FormData
         const formData = new FormData();
         const fileName = uri.split('/').pop();
-        const fileType = asset.mimeType || 'image/jpeg'; // Fallback mime type
+        const fileType = asset.mimeType || 'image/jpeg';
 
-        // For web, uri is often a blob URL or base64, needs conversion for FormData
-        // For native, uri is a file path
-        if (Platform.OS === 'web' && uri.startsWith('blob:')) {
+        if (Platform.OS === 'web' && (uri.startsWith('blob:') || uri.startsWith('data:'))) {
             const response = await fetch(uri);
             const blob = await response.blob();
             formData.append('tattooImage', blob, fileName || 'upload.jpg');
-        } else if (Platform.OS === 'web' && uri.startsWith('data:')) {
-            // Handle base64 URI
-            const base64Response = await fetch(uri);
-            const blob = await base64Response.blob();
-            formData.append('tattooImage', blob, fileName || 'upload.jpg');
-        }
-        else {
-             // For native, this is usually correct
+        } else {
             formData.append('tattooImage', {
                 uri: Platform.OS === 'android' ? uri : uri.replace('file://', ''),
-                name: fileName || `tattoo-${Date.now()}.jpg`,
-                type: fileType,
+                name: fileName || `tattoo-${Date.now()}.jpg`, type: fileType,
             } as any);
         }
         
         try {
-          // Make API call to upload image
-          // Ensure your API_BASE_URL is correctly set in your environment
-          // and that the backend expects 'tattooImage' as the field name.
           const uploadResponse = await api.uploadFile<{ message: string; filePath: string; filename: string; fileId?: string; name?: string; }>('/api/users/profile/custom-tattoo', formData, { requiresAuth: true });
-
           if (uploadResponse && uploadResponse.filePath) {
-            // Use the returned filePath (which is now a full ImageKit URL)
-            const fullImageUrl = uploadResponse.filePath; // Directly use the ImageKit URL
-            
+            const fullImageUrl = uploadResponse.filePath;
             handleSelectTattoo(
-              { 
-                id: 'custom-' + Date.now() + '-' + (uploadResponse.name || uploadResponse.filename), // Use ImageKit name if available
-                title: uploadResponse.name || uploadResponse.filename || 'Custom Tattoo' 
-              }, 
-              fullImageUrl // Use the direct ImageKit URL
+              { id: 'custom-' + Date.now() + '-' + (uploadResponse.name || uploadResponse.filename), title: uploadResponse.name || uploadResponse.filename || 'Custom Tattoo' },
+              fullImageUrl
             );
             Alert.alert('Success', 'Custom tattoo uploaded and added!');
           } else {
@@ -223,45 +218,33 @@ export default function AvatarConfigScreen() {
     }
   };
 
-  const handleSelectTattooForControls = (tattooId: string | null) => {
+  const handleSelectTattooForControls = (tattooId: string | null) => { // Changed parameter to tattooId
     if (tattooId) {
       const tattoo = editableAvatarConfig?.tattoos.find(t => t.id === tattooId);
       setSelectedTattooForControls(tattoo || null);
     } else {
       setSelectedTattooForControls(null);
     }
-    // Prevent scrolling when a tattoo is selected for fine-tuning, as sliders might be near the scroll view.
-    setIsAvatarInteracting(!!tattooId); 
+    // setIsAvatarInteracting(!!tattooId); // Removed: Selecting for controls is not an interaction that should block scroll
   };
 
   const handleFineTuneTattoo = (property: 'scale' | 'rotation', value: number) => {
     if (!selectedTattooForControls) return;
-
     const tattooToUpdate = editableAvatarConfig?.tattoos.find(t => t.id === selectedTattooForControls.id);
     if (!tattooToUpdate) return;
 
     if (property === 'scale') {
-      // value is the scale multiplier (e.g., 0.5 to 2.0 from the slider)
-      // Apply the scale to the *initial* dimensions of the tattoo
       const newWidth = tattooToUpdate.initialWidth * value;
       const newHeight = tattooToUpdate.initialHeight * value;
-
-      handleUpdateTattooPlacement(selectedTattooForControls.id, { 
-        width: newWidth, 
-        height: newHeight 
-      });
-
+      handleUpdateTattooPlacement(selectedTattooForControls.id, { width: newWidth, height: newHeight });
     } else if (property === 'rotation') {
       handleUpdateTattooPlacement(selectedTattooForControls.id, { rotation: value });
     }
   };
 
-  // Gesture handler for panning the zoomed mannequin
   const mannequinPanGesture = Gesture.Pan()
-    .enabled(mannequinZoom > 1) // Only allow panning if zoomed
-    .onBegin(() => {
-      runOnJS(setIsAvatarInteracting)(true);
-    })
+    .enabled(mannequinZoom > 1)
+    .onBegin(() => { runOnJS(setIsAvatarInteracting)(true); })
     .onUpdate((event) => {
       mannequinTranslateX.value = mannequinBaseTranslateX.value + event.translationX;
       mannequinTranslateY.value = mannequinBaseTranslateY.value + event.translationY;
@@ -270,24 +253,16 @@ export default function AvatarConfigScreen() {
       mannequinBaseTranslateX.value = mannequinTranslateX.value;
       mannequinBaseTranslateY.value = mannequinTranslateY.value;
     })
-    .onFinalize(() => {
-      runOnJS(setIsAvatarInteracting)(false);
-    });
+    .onFinalize(() => { runOnJS(setIsAvatarInteracting)(false); });
 
-  // Animated style for the mannequin container (for zoom and pan)
-  const animatedMannequinStyle = useAnimatedStyle(() => {
-    return {
-      width: AVATAR_DISPLAY_WIDTH,
-      height: AVATAR_DISPLAY_HEIGHT,
-      transform: [
-        { translateX: mannequinTranslateX.value },
-        { translateY: mannequinTranslateY.value },
-        { scale: mannequinZoom },
-      ],
-    };
-  });
+  const animatedMannequinStyle = useAnimatedStyle(() => ({
+    width: AVATAR_DISPLAY_WIDTH, height: AVATAR_DISPLAY_HEIGHT,
+    transform: [
+      { translateX: mannequinTranslateX.value }, { translateY: mannequinTranslateY.value },
+      { scale: mannequinZoom },
+    ],
+  }));
   
-  // Reset pan when zoom changes back to 1
   useEffect(() => {
     if (mannequinZoom <= 1) {
       mannequinTranslateX.value = withTiming(0);
@@ -297,409 +272,406 @@ export default function AvatarConfigScreen() {
     }
   }, [mannequinZoom]);
 
-
-  if (!user) {
-    return (
-      <ThemedView style={styles.containerCenter}>
-        <ThemedText>Loading user data or please log in.</ThemedText>
-        <TouchableFix onPress={() => router.replace('/login')} style={styles.button}>
-          <ThemedText style={styles.buttonText}>Go to Login</ThemedText>
-        </TouchableFix>
-      </ThemedView>
-    );
-  }
-  
   if (!editableAvatarConfig) {
-    return (
-      <ThemedView style={styles.containerCenter}>
-        <ThemedText>Loading configuration...</ThemedText>
-      </ThemedView>
-    );
+    return <ThemedView style={styles.centered}><ThemedText>Loading configuration...</ThemedText></ThemedView>;
   }
+
+  const currentScaleValue = selectedTattooForControls && selectedTattooForControls.initialWidth
+  ? selectedTattooForControls.width / selectedTattooForControls.initialWidth
+  : 1;
 
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>{/* Required for GestureDetector */}
-      <ThemedView style={styles.outerContainer}>
-        <ScrollView 
-          style={styles.scrollContainer} 
-          contentContainerStyle={styles.contentContainer}
-          scrollEnabled={!isAvatarInteracting} 
-        >
-          <View style={styles.headerControls}>
-            <TouchableFix onPress={() => router.push('/(tabs)/profile')} style={[styles.button, styles.backButton, styles.headerButtonSmall]}>
-                <IconSymbol name="chevron.left" size={18} color="#FFFFFF" />
-                <ThemedText style={styles.buttonText}> Back</ThemedText>
-            </TouchableFix>
-            <View style={styles.titleContainer}>
-                <ThemedText type="title" style={styles.title}>Customize Avatar</ThemedText>
-                <TouchableFix onPress={showInstructions} style={styles.infoButton}>
-                    <IconSymbol name="info.circle" size={22} color="#FFFFFF" />
-                </TouchableFix>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <ScrollView 
+        style={styles.scrollView} 
+        contentContainerStyle={styles.scrollViewContent}
+        scrollEnabled={!isAvatarInteracting} // Simplified scroll enabled logic
+      >
+        <ThemedView style={styles.container}>
+          <View style={styles.headerActions}>
+            <TouchableOpacity onPress={handleDiscardChanges} style={styles.iconButton}>
+              <IconSymbol name="xmark.circle" size={26} color="#FF3B30" />
+            </TouchableOpacity>
+            <ThemedText type="title" style={styles.pageTitle}>Customize Avatar</ThemedText>
+            <TouchableOpacity onPress={showInstructions} style={styles.iconButton}>
+              <IconSymbol name="questionmark.circle" size={26} color="#007AFF" />
+            </TouchableOpacity>
+          </View>
+
+          {/* Section: Mannequin Configuration */}
+          <View style={styles.sectionContainer}>
+            <ThemedText type="subtitle" style={styles.sectionTitle}>Mannequin</ThemedText>
+            <View style={styles.mannequinTypeContainer}>
+              {MANNEQUIN_TYPES.map(type => (
+                <TouchableOpacity
+                  key={type.id}
+                  style={[
+                    styles.mannequinTypeButton,
+                    editableAvatarConfig.baseMannequinId === type.id && styles.mannequinTypeButtonActive
+                  ]}
+                  onPress={() => setEditableAvatarConfig(prev => ({ ...prev!, baseMannequinId: type.id }))}
+                >
+                  <ThemedText style={[
+                    styles.mannequinTypeButtonText,
+                    editableAvatarConfig.baseMannequinId === type.id && styles.mannequinTypeButtonTextActive
+                  ]}>{type.label}</ThemedText>
+                </TouchableOpacity>
+              ))}
             </View>
-            <TouchableFix onPress={handleSaveConfiguration} disabled={loading} style={[styles.button, styles.saveButton, styles.headerButtonSmall]}>
-                <IconSymbol name="checkmark.circle" size={18} color="#FFFFFF" />
-                <ThemedText style={styles.buttonText}> Save</ThemedText>
-            </TouchableFix>
+            <View style={styles.sliderContainer}>
+              <ThemedText style={styles.sliderLabel}>Zoom Mannequin: {mannequinZoom.toFixed(1)}x</ThemedText>
+              <Slider
+                style={styles.slider}
+                minimumValue={1}
+                maximumValue={3}
+                value={mannequinZoom}
+                onValueChange={setMannequinZoom}
+                minimumTrackTintColor="#007AFF"
+                maximumTrackTintColor="#D1D1D6"
+                thumbTintColor="#007AFF"
+              />
+            </View>
           </View>
 
-          {/* Mannequin Zoom Slider Section */}
-          <View style={styles.zoomControlsSection}>
-            <ThemedText style={styles.sliderLabel}>Mannequin Zoom (Drag to Pan when Zoomed)</ThemedText>
-            <Slider
-              style={styles.slider}
-              minimumValue={1}
-              maximumValue={3}
-              value={mannequinZoom}
-              step={0.1}
-              onValueChange={(value) => {
-                runOnJS(setMannequinZoom)(value);
-                // If zooming out completely, ensure interaction state is managed
-                if (value <= 1) {
-                  runOnJS(setIsAvatarInteracting)(false); // Allow scroll if not zoomed
-                }
-              }}
-              // onSlidingStart={() => runOnJS(setIsAvatarInteracting)(true)} // Covered by mannequinPanGesture or tattoo interaction
-              // onSlidingComplete={() => { /* Potentially setIsAvatarInteracting(false) if not panning */ }} // Covered by mannequinPanGesture
-              minimumTrackTintColor="#007AFF"
-              maximumTrackTintColor="#FFFFFF"
-              thumbTintColor="#007AFF"
-            />
-          </View>
-
-          <View style={styles.avatarDisplaySection}>
+          {/* Section: Avatar Preview */}
+          <View style={[styles.sectionContainer, styles.avatarPreviewSection]}>
+            <ThemedText type="subtitle" style={styles.sectionTitle}>Avatar Preview</ThemedText>
             <GestureDetector gesture={mannequinPanGesture}>
-              <Animated.View style={animatedMannequinStyle}>
+              <Animated.View style={[styles.avatarDisplayWrapper, animatedMannequinStyle]}>
                 <AvatarDisplayComponent
-                  avatarConfiguration={editableAvatarConfig}
-                  onUpdateTattooPlacement={handleUpdateTattooPlacement}
-                  isEditing={true}
+                  avatarConfiguration={editableAvatarConfig} // Corrected prop name
+                  onUpdateTattooPlacement={handleUpdateTattooPlacement} // Corrected prop name
+                  onSelectTattoo={handleSelectTattooForControls} // Corrected prop name, signature now matches
+                  // width and height are now taken from containerWidth/Height in AvatarDisplayComponent if not provided, or use its defaults
+                  // We pass them here to ensure consistency with the AVATAR_DISPLAY_WIDTH/HEIGHT used for the animated wrapper
                   containerWidth={AVATAR_DISPLAY_WIDTH}
                   containerHeight={AVATAR_DISPLAY_HEIGHT}
-                  onTattooInteractionStart={() => runOnJS(setIsAvatarInteracting)(true)}
-                  onTattooInteractionEnd={() => runOnJS(setIsAvatarInteracting)(false)}
+                  isEditing={true}
                   selectedTattooId={selectedTattooForControls?.id}
-                  onSelectTattoo={handleSelectTattooForControls}
                 />
               </Animated.View>
             </GestureDetector>
           </View>
 
+          {/* Section: Adjust Selected Tattoo (Conditional) */}
           {selectedTattooForControls && (
-            <View style={styles.fineTuneControlsSection}>
-              <ThemedText style={styles.sectionTitle}>Adjust Selected Tattoo: {selectedTattooForControls.tattooTitle}</ThemedText>
+            <View style={styles.sectionContainer}>
+              <ThemedText type="subtitle" style={styles.sectionTitle}>
+                Adjust: {selectedTattooForControls.tattooTitle || 'Selected Tattoo'}
+              </ThemedText>
               <View style={styles.sliderContainer}>
-                <ThemedText style={styles.sliderLabel}>Scale (Size)</ThemedText>
+                <ThemedText style={styles.sliderLabel}>Scale: {currentScaleValue.toFixed(1)}x</ThemedText>
                 <Slider
                   style={styles.slider}
-                  minimumValue={0.5} 
-                  maximumValue={2.5} // Increased max scale   
-                  value={selectedTattooForControls.width / (selectedTattooForControls.initialWidth || selectedTattooForControls.width || 1)} // Calculate current scale based on initial width
-                  step={0.05} // Finer step
-                  onValueChange={(sliderValue: number) => {
-                      handleFineTuneTattoo('scale', sliderValue);
-                  }}
-                  onSlidingStart={() => runOnJS(setIsAvatarInteracting)(true)}
-                  onSlidingComplete={() => runOnJS(setIsAvatarInteracting)(false)}
+                  minimumValue={0.25} 
+                  maximumValue={2.5}  
+                  value={currentScaleValue}
+                  onValueChange={(value) => handleFineTuneTattoo('scale', value)}
                   minimumTrackTintColor="#007AFF"
-                  maximumTrackTintColor="#FFFFFF"
+                  maximumTrackTintColor="#D1D1D6"
                   thumbTintColor="#007AFF"
                 />
               </View>
               <View style={styles.sliderContainer}>
-                <ThemedText style={styles.sliderLabel}>Rotation</ThemedText>
+                <ThemedText style={styles.sliderLabel}>Rotation: {selectedTattooForControls.rotation?.toFixed(0) || 0}°</ThemedText>
                 <Slider
                   style={styles.slider}
                   minimumValue={-180}
                   maximumValue={180}
                   value={selectedTattooForControls.rotation || 0}
+                  onValueChange={(value) => handleFineTuneTattoo('rotation', value)}
                   step={1}
-                  onValueChange={(sliderValue: number) => handleFineTuneTattoo('rotation', sliderValue)}
-                  onSlidingStart={() => runOnJS(setIsAvatarInteracting)(true)}
-                  onSlidingComplete={() => runOnJS(setIsAvatarInteracting)(false)}
                   minimumTrackTintColor="#007AFF"
-                  maximumTrackTintColor="#FFFFFF"
+                  maximumTrackTintColor="#D1D1D6"
                   thumbTintColor="#007AFF"
                 />
               </View>
-               <TouchableFix onPress={() => {
-                  handleSelectTattooForControls(null);
-                  runOnJS(setIsAvatarInteracting)(false); // Ensure scroll is re-enabled
-                }} style={[styles.button, styles.doneButton]}>
-                  <ThemedText style={styles.buttonText}>Done Adjusting</ThemedText>
-              </TouchableFix>
+              <TouchableOpacity 
+                style={[styles.button, styles.secondaryButton, styles.deselectButton]} 
+                onPress={() => handleSelectTattooForControls(null)} // Pass null to deselect
+              >
+                <ThemedText style={styles.secondaryButtonText}>Done Adjusting</ThemedText>
+              </TouchableOpacity>
             </View>
           )}
 
-          {/* THIS IS THE controlsSection THAT WAS MISSING */}
-          <View style={styles.controlsSection}>
-            <ThemedText type="subtitle" style={styles.sectionTitle}>Mannequin</ThemedText>
-            <View style={styles.selectionGroup}>
-              {MANNEQUIN_TYPES.map((type) => (
-                <TouchableFix
-                  key={type.id}
-                  style={[
-                    styles.selectableItem,
-                    editableAvatarConfig.baseMannequinId === type.id && styles.selectedItem,
-                  ]}
-                  onPress={() => setEditableAvatarConfig(prev => ({ ...prev!, baseMannequinId: type.id }))}
-                >
-                  <ThemedText style={editableAvatarConfig.baseMannequinId === type.id ? styles.selectedItemText : styles.itemText}>{type.label}</ThemedText>
-                </TouchableFix>
-              ))}
-            </View>
-
-            <ThemedText type="subtitle" style={styles.sectionTitle}>Add Tattoo</ThemedText>
-            <View style={styles.tattooSelectionList}>
-              {STATIC_TATTOOS_FOR_SELECTION.map((tattoo) => (
-                <TouchableFix key={tattoo.id} onPress={() => handleSelectTattoo(tattoo)} style={styles.tattooItem}>
-                  {tattoo.imageRequire && <Image source={tattoo.imageRequire} style={styles.tattooImageThumbnail} />}
-                  <ThemedText style={styles.itemText}>{tattoo.title}</ThemedText>
-                </TouchableFix>
-              ))}
-            </View>
-            <TouchableFix onPress={handlePickCustomTattooImage} style={[styles.button, styles.uploadButton]}>
-              <IconSymbol name="plus.circle.fill" size={18} color="#FFFFFF" />
-              <ThemedText style={styles.buttonText}> Upload Custom Tattoo</ThemedText>
-            </TouchableFix>
-
-            {editableAvatarConfig.tattoos && editableAvatarConfig.tattoos.length > 0 && (
-              <>
-                <ThemedText type="subtitle" style={styles.sectionTitle}>Placed Tattoos</ThemedText>
-                <View style={styles.placedTattoosList}>
-                  {editableAvatarConfig.tattoos
-                    .filter(tattoo => tattoo && tattoo.id) 
-                    .map((tattoo) => (
-                    <View key={tattoo.id} style={styles.placedTattooItem}>
-                      <View style={styles.placedTattooInfo}>
-                          {tattoo.customImageUri ? (
-                              <Image source={{uri: tattoo.customImageUri}} style={styles.tattooImageThumbnailSmall} />
-                          ) : tattoo.imageRequire ? (
-                              <Image source={tattoo.imageRequire} style={styles.tattooImageThumbnailSmall} />
-                          ) : null}
-                          <ThemedText style={styles.itemTextSmall} numberOfLines={1}>{tattoo.tattooTitle || `Tattoo ${tattoo.id.substring(0,6)}`}</ThemedText>
-                      </View>
-                      <TouchableFix onPress={() => handleRemoveTattoo(tattoo.id)} style={styles.removeButton}>
-                        <IconSymbol name="trash.fill" size={18} color="#FF6347" />
-                      </TouchableFix>
-                    </View>
-                  ))}
+          {/* Section: Placed Tattoos */}
+          <View style={styles.sectionContainer}>
+            <ThemedText type="subtitle" style={styles.sectionTitle}>Placed Tattoos</ThemedText>
+            {editableAvatarConfig.tattoos.length === 0 ? (
+              <ThemedText style={styles.emptyListText}>No tattoos placed yet.</ThemedText>
+            ) : (
+              editableAvatarConfig.tattoos.map(tattoo => (
+                <View key={tattoo.id} style={[
+                  styles.tattooListItem, 
+                  selectedTattooForControls?.id === tattoo.id && styles.tattooListItemSelected
+                ]}>
+                  <Image 
+                    source={tattoo.customImageUri ? { uri: tattoo.customImageUri } : tattoo.imageRequire} 
+                    style={styles.tattooListImage} 
+                  />
+                  <ThemedText style={styles.tattooListTitle} numberOfLines={1}>{tattoo.tattooTitle}</ThemedText>
+                  <View style={styles.tattooListActions}>
+                    <TouchableOpacity onPress={() => handleSelectTattooForControls(tattoo.id)} style={styles.iconButtonSmall}>
+                      <IconSymbol name="pencil.circle" size={24} color="#007AFF" />
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={() => handleRemoveTattoo(tattoo.id)} style={styles.iconButtonSmall}>
+                      <IconSymbol name="trash" size={22} color="#FF3B30" />
+                    </TouchableOpacity>
+                  </View>
                 </View>
-              </>
+              ))
             )}
           </View>
-          {/* END OF MISSING controlsSection */}
 
-        </ScrollView>
-      </ThemedView>
+          {/* Section: Add Tattoos */}
+          <View style={styles.sectionContainer}>
+            <ThemedText type="subtitle" style={styles.sectionTitle}>Add Tattoo</ThemedText>
+            <View style={styles.tattooSelectionGrid}>
+              {STATIC_TATTOOS_FOR_SELECTION.map(tattooItem => (
+                <TouchableOpacity
+                  key={tattooItem.id}
+                  style={styles.tattooSelectItem}
+                  onPress={() => handleSelectTattoo(tattooItem)}
+                >
+                  <Image source={tattooItem.imageRequire} style={styles.tattooSelectImage} />
+                  <ThemedText style={styles.tattooSelectTitle} numberOfLines={2}>{tattooItem.title}</ThemedText>
+                </TouchableOpacity>
+              ))}
+            </View>
+            <TouchableOpacity style={[styles.button, styles.secondaryButton, styles.uploadButton]} onPress={handlePickCustomTattooImage} disabled={loading}>
+              <IconSymbol name="arrow.up.circle" size={20} color="#007AFF" style={{ marginRight: 8 }}/>
+              <ThemedText style={styles.secondaryButtonText}>{loading ? 'Uploading...' : 'Upload Custom Tattoo'}</ThemedText>
+            </TouchableOpacity>
+          </View>
+
+          {/* Save Button */}
+          <TouchableOpacity style={[styles.button, styles.saveButton]} onPress={handleSaveConfiguration} disabled={loading}>
+            <ThemedText style={styles.buttonText}>{loading ? 'Saving...' : 'Save Configuration'}</ThemedText>
+          </TouchableOpacity>
+
+        </ThemedView>
+      </ScrollView>
     </GestureHandlerRootView>
   );
 }
 
 const styles = StyleSheet.create({
-  outerContainer: {
+  scrollView: {
     flex: 1,
-    backgroundColor: '#1a1a1a',
+    backgroundColor: '#161618', // Dark theme background
   },
-  scrollContainer: {
+  scrollViewContent: {
+    paddingBottom: 40, 
+  },
+  container: {
     flex: 1,
+    padding: 15,
+    backgroundColor: '#161618', // Dark theme background
   },
-  contentContainer: {
-    paddingBottom: 40,
-  },
-  containerCenter: {
+  centered: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 20,
-    backgroundColor: '#1a1a1a',
+    backgroundColor: '#161618', // Dark theme background
   },
-  headerControls: {
+  headerActions: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 15,
-    paddingHorizontal: 10,
-    paddingTop: Platform.OS === 'ios' ? 40 : 20,
-    backgroundColor: '#262626',
-    borderBottomWidth: 1,
-    borderBottomColor: '#333333',
+    marginBottom: 0, // Reduced from 5, to minimize space below header
+    paddingTop: Platform.OS === 'android' ? 20 : 15, // Increased top padding to push header down
+    paddingHorizontal: 5, // Add some horizontal padding if needed for icons
   },
-  titleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    flex: 1, // Takes up space between Back and Save
-    minWidth: 0, // Helps flex item shrink below its content's intrinsic size
-    marginHorizontal: 4, // Add a small gap between title area and buttons
-  },
-  title: {
-    color: '#FFFFFF',
-    fontSize: 18, // Reduced from 20
-    marginRight: 8,
-    flexShrink: 1, // Allow title to shrink if needed
-  },
-  infoButton: {
-    padding: 5,
-  },
-  headerButtonSmall: {
-    paddingHorizontal: 12, // Reduced from 15
-    paddingVertical: 10,
-  },
-  zoomControlsSection: { // New style for the zoom slider container
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    backgroundColor: '#2c2c2c', 
-    marginHorizontal: 10,
-    marginTop: 10,
-    borderRadius: 8,
-  },
-  avatarDisplaySection: { // Remains mostly the same, acts as viewport
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginVertical: 10,
-    backgroundColor: '#2c2c2c',
-    padding: 5,
-    borderRadius: 8,
-    width: AVATAR_DISPLAY_WIDTH + 10,
-    height: AVATAR_DISPLAY_HEIGHT + 10,
-    alignSelf: 'center',
-    overflow: 'hidden', // Crucial for zoom effect
-  },
-  controlsSection: {
-    paddingHorizontal: 20,
-    marginTop: 10,
-  },
-  sectionTitle: {
-    fontSize: 18,
+  pageTitle: {
+    fontSize: 22, // Reduced from 24
     fontWeight: 'bold',
-    marginTop: 20,
-    marginBottom: 10,
-    color: '#e0e0e0',
+    color: '#E0E0E0', // Light text for dark theme
+    textAlign: 'center', 
+    flex: 1, 
   },
-  selectionGroup: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    marginBottom: 10,
-  },
-  selectableItem: {
-    paddingVertical: 10,
-    paddingHorizontal: 15,
-    backgroundColor: '#333333',
-    borderRadius: 20,
-    margin: 5,
-    borderWidth: 1,
-    borderColor: '#444444',
-  },
-  selectedItem: {
-    backgroundColor: '#007AFF',
-    borderColor: '#0056b3',
-  },
-  itemText: {
-    color: '#FFFFFF',
-  },
-  selectedItemText: {
-    color: '#FFFFFF',
-    fontWeight: 'bold',
-  },
-  tattooSelectionList: {
-    marginBottom: 10,
-  },
-  tattooItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#333333',
-    padding: 10,
-    borderRadius: 8,
-    marginBottom: 8,
-    borderWidth: 1,
-    borderColor: '#444444',
-  },
-  tattooImageThumbnail: {
-    width: 40,
-    height: 40,
-    borderRadius: 4,
-    marginRight: 10,
-    backgroundColor: '#555555',
-  },
-  tattooImageThumbnailSmall: {
-    width: 30,
-    height: 30,
-    borderRadius: 3,
-    marginRight: 8,
-    backgroundColor: '#555555',
-  },
-  button: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#007AFF',
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderRadius: 25,
-    justifyContent: 'center',
-    marginVertical: 10,
-  },
-  saveButton: {
-    backgroundColor: '#34C759',
-  },
-  backButton: {
-     backgroundColor: '#555555',
-  },
-  uploadButton: {
-    backgroundColor: '#FF9500',
-  },
-  buttonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: 'bold',
-    marginLeft: 5,
-  },
-  placedTattoosList: {
-    marginTop: 5,
-  },
-  placedTattooItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    backgroundColor: '#2c2c2c',
-    padding: 10,
-    borderRadius: 8,
-    marginBottom: 8,
-  },
-  placedTattooInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-  },
-  itemTextSmall: {
-    color: '#e0e0e0',
-    fontSize: 14,
-    flexShrink: 1,
-  },
-  removeButton: {
+  iconButton: {
     padding: 8,
   },
-  fineTuneControlsSection: {
-    paddingHorizontal: 20,
-    paddingVertical: 15,
-    backgroundColor: '#2c2c2c',
-    marginTop: 10,
-    borderRadius: 8,
-    marginHorizontal: 10, // Give it some horizontal margin
+  iconButtonSmall: {
+    padding: 6,
+    marginLeft: 8,
+  },
+  sectionContainer: {
+    marginBottom: 25,
+    padding: 15,
+    backgroundColor: '#1E1E1E', // Darker section background
+    borderRadius: 12,
+    // Removed shadow for a flatter dark theme, or use light shadow if preferred
+    // shadowColor: '#000',
+    // shadowOffset: { width: 0, height: 1 },
+    // shadowOpacity: 0.2,
+    // shadowRadius: 2,
+    // elevation: 3,
+    borderWidth: 1,
+    borderColor: '#2C2C2C', // Subtle border for sections
+  },
+  sectionTitle: {
+    fontSize: 20, 
+    fontWeight: '600',
+    marginBottom: 10, 
+    color: '#D0D0D0', // Light text for dark theme
+  },
+  mannequinTypeContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    marginBottom: 15,
+  },
+  mannequinTypeButton: {
+    paddingVertical: 10,
+    paddingHorizontal: 25,
+    borderRadius: 20,
+    borderWidth: 1.5,
+    borderColor: '#007AFF', // Keep primary action color for borders
+    backgroundColor: 'transparent', // Transparent background for dark theme
+  },
+  mannequinTypeButtonActive: {
+    backgroundColor: '#007AFF',
+  },
+  mannequinTypeButtonText: {
+    color: '#007AFF', // Primary action color for text
+    fontWeight: '500',
+    fontSize: 16,
+  },
+  mannequinTypeButtonTextActive: {
+    color: '#FFFFFF', // White text when active
+  },
+  avatarPreviewSection: {
+    alignItems: 'center', // Center the avatar display
+    paddingVertical: 20, // More vertical padding
+    overflow: 'hidden', // Added to contain zoomed avatar
+  },
+  avatarDisplayWrapper: {
+    backgroundColor: '#2C2C2C', // Darker placeholder background
+    borderRadius: 10,
+    overflow: 'hidden', 
+    borderWidth: 1,
+    borderColor: '#404040', // Darker border
   },
   sliderContainer: {
-    marginBottom: 20,
+    marginBottom: 15,
   },
   sliderLabel: {
-    fontSize: 16,
-    color: '#e0e0e0',
+    fontSize: 15,
+    color: '#B0B0B0', // Lighter gray for dark theme
     marginBottom: 8,
   },
   slider: {
     width: '100%',
-    height: 40, // Standard slider height
+    height: 40,
+    // Thumb and track colors are often system-dependent or might need specific props if using a custom slider
   },
-  doneButton: {
-    backgroundColor: '#555555',
+  tattooListItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#2A2A2A', // Darker border
+    backgroundColor: 'transparent', 
+    borderRadius: 8,
+    marginBottom: 5,
+  },
+  tattooListItemSelected: {
+    backgroundColor: '#007AFF20', // Primary color with low opacity for selection
+    borderColor: '#007AFF',
+    borderWidth: 1, 
+  },
+  tattooListImage: {
+    width: 45,
+    height: 45,
+    borderRadius: 6,
+    marginRight: 12,
+    backgroundColor: '#333333', // Darker placeholder
+  },
+  tattooListTitle: {
+    flex: 1,
+    fontSize: 16,
+    color: '#E0E0E0', // Light text
+  },
+  tattooListActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  emptyListText: {
+    textAlign: 'center',
+    color: '#888888', // Medium gray for dark theme
+    paddingVertical: 15,
+    fontSize: 15,
+  },
+  tattooSelectionGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    marginBottom: 15,
+  },
+  tattooSelectItem: {
+    width: '31%', 
+    alignItems: 'center',
+    marginBottom: 15,
+    padding: 8,
+    backgroundColor: '#252528', // Darker item background
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#383838', // Darker border
+  },
+  tattooSelectImage: {
+    width: 70,
+    height: 70,
+    borderRadius: 6,
+    marginBottom: 8,
+    backgroundColor: '#333333', // Darker placeholder
+  },
+  tattooSelectTitle: {
+    fontSize: 13,
+    textAlign: 'center',
+    color: '#C0C0C0', // Lighter gray text
+    height: 32, 
+  },
+  button: {
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    borderRadius: 25, // More rounded buttons
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    minHeight: 50,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.15,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  saveButton: {
+    backgroundColor: '#007AFF', 
+    marginTop: 20,
+  },
+  buttonText: {
+    color: '#FFFFFF', // White text on primary button
+    fontSize: 17,
+    fontWeight: '600',
+  },
+  secondaryButton: {
+    backgroundColor: '#2C2C2C', // Dark background for secondary actions
+    borderWidth: 1,
+    borderColor: '#007AFF', // Primary color border
+  },
+  secondaryButtonText: {
+    color: '#007AFF', // Primary color text
+    fontSize: 16,
+    fontWeight: '500',
+  },
+  uploadButton: {
     marginTop: 10,
-  }
+  },
+  deselectButton: {
+    marginTop: 15,
+    paddingVertical: 10, // Smaller padding for this button
+    minHeight: 40,
+  },
 });

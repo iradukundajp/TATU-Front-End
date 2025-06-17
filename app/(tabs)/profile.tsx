@@ -401,17 +401,18 @@ export default function ProfileScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F5F5F5', // Light gray background for the whole screen
+    backgroundColor: '#1A1A1A', // Dark background
   },
   containerCenter: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
+    backgroundColor: '#1A1A1A', // Dark background
   },
   loginButton: {
     marginTop: 20,
-    backgroundColor: '#007AFF',
+    backgroundColor: '#0A84FF', // Dark Accent
     paddingVertical: 12,
     paddingHorizontal: 25,
     borderRadius: 8,
@@ -420,7 +421,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   contentContainer: {
-    paddingBottom: 30, // Ensure space for logout button
+    paddingBottom: 30,
     paddingHorizontal: 20,
   },
   header: {
@@ -428,21 +429,20 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 20,
     borderBottomWidth: 1,
-    borderBottomColor: '#DDDDDD',
+    borderBottomColor: '#404040', // Dark border
     marginBottom: 20,
   },
-  mannequinAvatarHeaderContainer: { // New style for the tappable avatar display in header
+  mannequinAvatarHeaderContainer: {
     marginRight: 20,
-    // Add other styling as needed, e.g., for border or shadow
-    borderRadius: 10, // Example: if you want rounded corners for the container
-    overflow: 'hidden', // Important if AvatarDisplayComponent itself doesn't have rounded corners
-    borderColor: '#007AFF', // Example border
-    borderWidth: 2, // Example border
+    borderRadius: 10,
+    overflow: 'hidden',
+    borderColor: '#0A84FF', // Dark Accent
+    borderWidth: 2,
   },
-  mannequinAvatarHeader: { // Style for the size of the AvatarDisplayComponent in the header
-    width: 100, // Increased size
-    height: 120, // Increased size, adjust aspect ratio as needed for "face zoom"
-    // backgroundColor: '#E0E0E0', // Placeholder background if needed
+  mannequinAvatarHeader: {
+    width: 100,
+    height: 120,
+    // backgroundColor: '#333333', // Darker placeholder if needed
   },
   nameContainer: {
     flex: 1,
@@ -450,62 +450,64 @@ const styles = StyleSheet.create({
   name: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#333333',
+    color: '#E0E0E0', // Dark Text Primary
   },
   nameInput: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#333333',
+    color: '#E0E0E0', // Dark Text Primary
     borderBottomWidth: 1,
-    borderBottomColor: '#CCCCCC',
+    borderBottomColor: '#555555', // Darker border for input
     paddingVertical: 5,
     marginBottom: 5,
+    backgroundColor: 'transparent', // Ensure no light background
   },
   role: {
     fontSize: 16,
-    color: '#555555',
+    color: '#A0A0A0', // Dark Text Secondary
   },
   section: {
     marginBottom: 25,
     padding: 15,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#2C2C2C', // Dark Surface
     borderRadius: 10,
-    shadowColor: '#000',
+    // Shadows might need to be adjusted or removed for dark theme
+    // For simplicity, we'll keep them but they might not be very visible
+    shadowColor: '#000', // Shadow color can remain black
     shadowOffset: {
       width: 0,
       height: 1,
     },
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.2, // Slightly increased opacity for dark mode if needed
     shadowRadius: 3,
-    elevation: 2,
+    elevation: 3, // Elevation for Android
   },
   input: {
     borderWidth: 1,
-    borderColor: '#CCCCCC',
+    borderColor: '#555555', // Darker border for input
     borderRadius: 8,
     paddingVertical: 10,
     paddingHorizontal: 15,
     fontSize: 16,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#333333', // Dark Input Background
     marginTop: 8,
-    color: '#333333',
+    color: '#E0E0E0', // Dark Text Primary
   },
   inputBio: {
     borderWidth: 1,
-    borderColor: '#CCCCCC',
+    borderColor: '#555555', // Darker border for input
     borderRadius: 8,
     paddingVertical: 10,
     paddingHorizontal: 15,
     fontSize: 16,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#333333', // Dark Input Background
     marginTop: 8,
-    minHeight: 100,
-    textAlignVertical: 'top',
-    color: '#333333',
+    color: '#E0E0E0', // Dark Text Primary
+    textAlignVertical: 'top', // For multiline
   },
   textBlock: {
     fontSize: 16,
-    color: '#444444',
+    color: '#E0E0E0', // Dark Text Primary
     lineHeight: 22,
     marginTop: 5,
   },
@@ -517,28 +519,36 @@ const styles = StyleSheet.create({
   tag: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#007AFF',
+    backgroundColor: '#4A4A4A', // Darker tag background
     borderRadius: 15,
     paddingVertical: 6,
     paddingHorizontal: 12,
     marginRight: 8,
     marginBottom: 8,
+    borderWidth: 1,
+    borderColor: '#555555',
   },
   tagView: { // For non-editable tags
-    backgroundColor: '#E0E0E0',
+    backgroundColor: '#4A4A4A', // Darker tag background
     borderRadius: 15,
     paddingVertical: 6,
     paddingHorizontal: 12,
     marginRight: 8,
     marginBottom: 8,
+    borderWidth: 1,
+    borderColor: '#555555',
   },
   tagText: {
-    color: '#FFFFFF',
+    color: '#E0E0E0', // Dark Text Primary
     fontSize: 14,
   },
   removeTagButton: {
     marginLeft: 8,
+    padding: 2, // Make it easier to tap
   },
+  // IconSymbol color for removeTagButton is set directly (e.g. #FFFFFF),
+  // consider making it #E0E0E0 or another light color for dark theme if needed.
+  // For now, white should be fine.
   inputGroup: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -547,57 +557,57 @@ const styles = StyleSheet.create({
   inputFlex: {
     flex: 1,
     borderWidth: 1,
-    borderColor: '#CCCCCC',
+    borderColor: '#555555',
     borderRadius: 8,
     paddingVertical: 10,
     paddingHorizontal: 15,
     fontSize: 16,
+    backgroundColor: '#333333',
+    color: '#E0E0E0',
     marginRight: 10,
-    backgroundColor: '#FFFFFF',
-    color: '#333333',
   },
   addButton: {
-    backgroundColor: '#28A745', // Green color for add button
+    backgroundColor: '#0A84FF', // Dark Accent
     paddingVertical: 12,
     paddingHorizontal: 20,
     borderRadius: 8,
     justifyContent: 'center',
+    alignItems: 'center',
   },
   addButtonText: {
-    color: '#FFFFFF',
-    fontWeight: 'bold',
+    color: '#FFFFFF', // White text on accent button
     fontSize: 16,
+    fontWeight: 'bold',
   },
   buttonContainer: {
     marginTop: 20,
-    flexDirection: 'row',
-    justifyContent: 'space-around',
+    marginBottom: 10,
   },
   button: {
-    paddingVertical: 12,
-    paddingHorizontal: 25,
+    paddingVertical: 14,
+    paddingHorizontal: 20,
     borderRadius: 8,
     alignItems: 'center',
-    minWidth: 120,
-    marginHorizontal: 5, // Add some space between buttons if they wrap
-  },
-  editButton: {
-    backgroundColor: '#007AFF', // Blue for edit
-  },
-  saveButton: {
-    backgroundColor: '#28A745', // Green for save
-  },
-  cancelButton: {
-    backgroundColor: '#FFC107', // Orange for cancel
-  },
-  logoutButton: {
-    backgroundColor: '#DC3545', // Red for logout
-    marginTop: 15, // Add some margin above the logout button
-    alignSelf: 'center', // Center the logout button
+    marginBottom: 10,
   },
   buttonText: {
-    color: '#FFFFFF',
-    fontWeight: 'bold',
     fontSize: 16,
+    fontWeight: 'bold',
+    color: '#FFFFFF', // Default white text for buttons
   },
+  editButton: {
+    backgroundColor: '#0A84FF', // Dark Accent
+  },
+  saveButton: {
+    backgroundColor: '#34C759', // Green for save, ensure good contrast
+  },
+  cancelButton: {
+    backgroundColor: '#555555', // Darker gray for cancel
+  },
+  logoutButton: {
+    backgroundColor: '#FF3B30', // Red for logout, ensure good contrast
+    marginTop: 10, // Add some space if it's the last element
+  },
+  // Ensure ThemedText and ThemedView adapt correctly or override their styles if needed.
+  // The styles above try to be explicit for ProfileScreen.
 });

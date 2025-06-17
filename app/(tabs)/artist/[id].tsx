@@ -11,7 +11,7 @@ import * as artistService from '@/services/artist.service';
 import * as reviewService from '@/services/review.service';
 import * as messageService from '@/services/message.service';
 import { Artist } from '@/types/artist';
-import { PortfolioItem } from '@/types/portfolio';
+import { PortfolioItem, ArtistPortfolioAPIResponse } from '@/types/portfolio'; // Added ArtistPortfolioAPIResponse
 import { ReviewStatsResponse } from '@/types/review';
 import { StarRating } from '@/components/StarRating';
 import { ArtistReviewsSection } from '@/components/ArtistReviewsSection';
@@ -31,6 +31,7 @@ export default function ArtistDetailScreen() {
   const [showBookingForm, setShowBookingForm] = useState(false);
   
   useEffect(() => {
+    console.log('ArtistDetailScreen: EXPO_PUBLIC_API_BASE_URL:', process.env.EXPO_PUBLIC_API_BASE_URL);
     const loadArtistData = async () => {
       try {
         setLoading(true);
@@ -49,9 +50,22 @@ export default function ArtistDetailScreen() {
         console.log('Artist data loaded:', artistData.name);
         
         // Fetch artist portfolio
-        const portfolioData = await artistService.getArtistPortfolio(id);
-        setPortfolio(portfolioData);
-        console.log(`Loaded ${portfolioData.length} portfolio items`);
+        const rawPortfolioData: ArtistPortfolioAPIResponse = await artistService.getArtistPortfolio(id);
+        console.log(`ArtistDetailScreen: Raw portfolioData for artist ID ${id}:`, JSON.stringify(rawPortfolioData, null, 2));
+        
+        if (rawPortfolioData && rawPortfolioData.images && Array.isArray(rawPortfolioData.images)) {
+          const adaptedPortfolioItems: PortfolioItem[] = rawPortfolioData.images.map(image => ({
+            id: image.id,
+            artistId: rawPortfolioData.artistId, 
+            imageUrl: image.url, 
+            caption: image.caption, // Ensure caption is mapped
+          }));
+          setPortfolio(adaptedPortfolioItems);
+          console.log(`Adapted and loaded ${adaptedPortfolioItems.length} portfolio items. First item:`, JSON.stringify(adaptedPortfolioItems[0], null, 2));
+        } else {
+          setPortfolio([]);
+          console.log('No images found in portfolio data or portfolio data structure is not as expected.');
+        }
         
         // Fetch review stats
         loadReviewStats(id);
@@ -292,15 +306,34 @@ export default function ArtistDetailScreen() {
           
           {portfolio.length > 0 ? (
             <View style={styles.portfolioGrid}>
-              {portfolio.map((item) => (
-                <TouchableFix key={item.id} style={styles.portfolioItem}>
-                  <Image 
-                    source={{ uri: item.imageUrl }} 
-                    style={styles.portfolioImage} 
-                    resizeMode="cover"
-                  />
-                </TouchableFix>
-              ))}
+              {portfolio.map((item, index) => {
+                console.log(`ArtistDetailScreen: Processing adapted portfolio item ${index}:`, JSON.stringify(item, null, 2));
+                
+                const finalImageUrl = item.imageUrl.startsWith('http') 
+                  ? item.imageUrl 
+                  : `${process.env.EXPO_PUBLIC_API_BASE_URL || ''}${item.imageUrl}`;
+                
+                console.log(`ArtistDetailScreen: Attempting to load portfolio image ${index}: ${finalImageUrl}`);
+
+                return (
+                  <TouchableFix key={item.id} style={styles.portfolioItem}>
+                    <Image 
+                      source={{ uri: finalImageUrl }} 
+                      style={styles.portfolioImage} 
+                      resizeMode="cover"
+                      onError={(e) => {
+                        console.error(`Failed to load portfolio image ${finalImageUrl}:`, e.nativeEvent.error);
+                      }}
+                    />
+                    {/* Display the caption */}
+                    {item.caption && (
+                      <View style={styles.captionOverlay}>
+                        <ThemedText style={styles.captionText} numberOfLines={2}>{item.caption}</ThemedText>
+                      </View>
+                    )}
+                  </TouchableFix>
+                );
+              })}
             </View>
           ) : (
             <ThemedText style={styles.emptyPortfolioText}>No portfolio items yet</ThemedText>
@@ -500,15 +533,31 @@ const styles = StyleSheet.create({
     marginHorizontal: -4,
   },
   portfolioItem: {
-    width: '33.33%',
-    aspectRatio: 1,
-    padding: 4,
+    width: '48%', // Adjust for 2 columns with some spacing
+    aspectRatio: 1, // Square items
+    margin: '1%', // Spacing between items
+    borderRadius: 8,
+    overflow: 'hidden', // Important for borderRadius on Image to work with overlay
+    backgroundColor: '#333', // Placeholder while image loads
+    position: 'relative', // Needed for absolute positioning of caption overlay
   },
   portfolioImage: {
     width: '100%',
     height: '100%',
-    borderRadius: 4,
-    backgroundColor: '#1f1f1f',
+  },
+  captionOverlay: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+  },
+  captionText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    textAlign: 'center',
   },
   emptyPortfolioText: {
     fontStyle: 'italic',

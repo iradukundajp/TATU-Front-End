@@ -1,5 +1,5 @@
 import { Image } from 'expo-image';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react'; // Added useContext
 import { Platform, StyleSheet, View, FlatList, TouchableOpacity, ActivityIndicator, TextInput, Alert } from 'react-native';
 import { router } from 'expo-router';
 
@@ -13,8 +13,11 @@ import { ArtistCard } from '@/components/ArtistCard';
 import { IconSymbol } from '@/components/ui/IconSymbol';
 import * as artistService from '@/services/artist.service';
 import * as tattooService from '@/services/tattoo.service';
+import * as messageService from '@/services/message.service'; // Added messageService
 import { Artist } from '@/types/artist';
 import { TattooDesign } from '@/types/tattooDesign';
+import { AuthContext, AuthState } from '@/contexts/AuthContext'; // Added AuthContext and AuthState
+import { Conversation } from '@/types/message'; // Added Conversation
 
 export default function ExploreScreen() {
   const [featuredArtists, setFeaturedArtists] = useState<Artist[]>([]);
@@ -22,6 +25,8 @@ export default function ExploreScreen() {
   const [loading, setLoading] = useState(true);
   const [designsLoading, setDesignsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const auth = useContext(AuthContext) as AuthState; // Type assertion for auth context
+  const user = auth?.user; // Get user from typed auth context
 
   useEffect(() => {
     Promise.all([
@@ -69,6 +74,36 @@ export default function ExploreScreen() {
     router.push(artistPath as any);
   };
 
+  const handleSendMessage = async (artistId: string) => {
+    if (!user) {
+      Alert.alert("Error", "You must be logged in to send messages.");
+      return;
+    }
+    if (user.id === artistId) {
+      Alert.alert("Error", "You cannot send a message to yourself.");
+      return;
+    }
+    try {
+      const conversation = await messageService.startConversation(artistId);
+      if (conversation && conversation.id) {
+        router.push(`/chat/${conversation.id}` as any);
+      } else {
+        // Fallback to check existing conversations
+        const existingConversations: Conversation[] = await messageService.getUserConversations();
+        const existingConvo = existingConversations.find(c => c.otherUser.id === artistId);
+
+        if (existingConvo) {
+            router.push(`/chat/${existingConvo.id}` as any);
+        } else {
+            Alert.alert("Error", "Could not start or find conversation.");
+        }
+      }
+    } catch (error) {
+      console.error('Error starting conversation:', error);
+      Alert.alert("Error", "Failed to start conversation. Please try again.");
+    }
+  };
+
   const handleDesignPress = (design: TattooDesign) => {
     // Navigate to tattoos screen instead of non-existent artist detail page
     const tattoosPath = '/tattoos' as const;
@@ -86,6 +121,9 @@ export default function ExploreScreen() {
     <ArtistCard
       artist={item}
       onPress={handleArtistPress}
+      showBookingButton={false} // Explicitly hide Book Appointment button
+      showSendMessageButton={true} // Keep Send Message button visible
+      onSendMessage={() => handleSendMessage(item.id)} // Use new handler
     />
   );
 

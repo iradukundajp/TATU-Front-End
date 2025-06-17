@@ -5,6 +5,7 @@ import { TouchableFix } from '@/components/TouchableFix';
 import { ReviewsList } from '@/components/ReviewsList';
 import { ReviewModal } from '@/components/ReviewModal';
 import { IconSymbol } from '@/components/ui/IconSymbol';
+import { useAuth } from '@/contexts/AuthContext'; // Added import
 
 interface ArtistReviewsSectionProps {
   artistId: string;
@@ -17,10 +18,11 @@ interface ArtistReviewsSectionProps {
 export const ArtistReviewsSection: React.FC<ArtistReviewsSectionProps> = ({
   artistId,
   artistName,
-  canLeaveReview = false,
+  canLeaveReview = false, // Default remains false
   maxPreviewReviews = 5,
   onUserPress,
 }) => {
+  const { user: loggedInUser } = useAuth(); // Get logged-in user
   const [showReviewModal, setShowReviewModal] = useState(false);
 
   const handleReviewSubmitted = () => {
@@ -28,9 +30,15 @@ export const ArtistReviewsSection: React.FC<ArtistReviewsSectionProps> = ({
     console.log('Review submitted for artist:', artistId);
   };
 
+  // Determine if the current user can leave a review
+  const shouldShowWriteReviewButton =
+    canLeaveReview &&
+    loggedInUser &&
+    loggedInUser.id !== artistId;
+
   return (
     <View style={styles.container}>
-      {canLeaveReview && (
+      {shouldShowWriteReviewButton && ( // Updated condition
         <View style={styles.actionContainer}>
           <TouchableFix
             style={styles.writeReviewButton}
@@ -90,4 +98,4 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginLeft: 8,
   },
-}); 
+});

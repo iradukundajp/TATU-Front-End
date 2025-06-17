@@ -23,7 +23,10 @@ export interface AuthState {
   fetchUser: () => Promise<void>; // Added fetchUser here
 }
 
-const AuthContext = createContext<AuthState | null>(null);
+const AuthContext = createContext<AuthState | null>(null); // This was not exported
+
+// Add export here
+export { AuthContext }; 
 
 interface AuthProviderProps {
   children: ReactNode;
@@ -121,6 +124,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const updateProfile = async (profileData: UpdateProfileData) => {
     try {
       const updatedUser = await authService.updateProfile(profileData);
+      await authService.updateUserData(updatedUser); // Add this line
       setUser(updatedUser);
       return updatedUser;
     } catch (error) {
