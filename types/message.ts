@@ -15,7 +15,7 @@ export interface Message {
   senderId: string;
   receiverId: string;
   content: string;
-  messageType: 'text' | 'image' | 'booking_request';
+  messageType: 'text' | 'image' | 'booking_request' | 'aftercare';
   isRead: boolean;
   createdAt: string;
   sender: User;
@@ -34,7 +34,7 @@ export interface Conversation {
 export interface CreateMessageRequest {
   receiverId: string;
   content: string;
-  messageType?: 'text' | 'image' | 'booking_request';
+  messageType?: 'text' | 'image' | 'booking_request' | 'aftercare';
 }
 
 export interface MessagesResponse {
@@ -50,4 +50,4 @@ export interface MessagesResponse {
 
 export interface UnreadCountResponse {
   unreadCount: number;
-} 
+}

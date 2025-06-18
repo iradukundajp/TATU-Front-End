@@ -109,14 +109,16 @@ export default function ManageBookingsScreen() {
   const renderItem = ({ item }: { item: Booking }) => (
     <View style={styles.bookingCard}>
       <View style={styles.bookingHeader}>
-        <ThemedText style={styles.clientName}>{item.clientName}</ThemedText>
+        <ThemedText style={styles.clientName}>Booked by: {item.clientName}</ThemedText>
         <View style={[styles.statusBadge, { backgroundColor: getStatusColor(item.status) }]}>
           <ThemedText style={styles.statusText}>{item.status}</ThemedText>
         </View>
       </View>
       
       <ThemedText style={styles.dateText}>{formatDate(item.date)}</ThemedText>
-      <ThemedText style={styles.durationText}>{item.duration} minutes</ThemedText>
+      {item.duration > 0 && (
+        <ThemedText style={styles.durationText}>{item.duration}</ThemedText>
+      )}
       
       {item.note && (
         <View style={styles.noteContainer}>

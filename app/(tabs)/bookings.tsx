@@ -192,7 +192,7 @@ export default function BookingsScreen() {
               <IconSymbol name="person.fill" size={18} color="#555555" />
             </View>
           )}
-          <ThemedText style={styles.artistName}>{item.artistName}</ThemedText>
+          <ThemedText style={styles.artistName}>Artist: {item.artistName}</ThemedText>
         </TouchableOpacity>
         <View style={[styles.statusBadge, { backgroundColor: getStatusColor(item.status) }]}>
           <ThemedText style={styles.statusText}>{item.status}</ThemedText>
@@ -200,7 +200,9 @@ export default function BookingsScreen() {
       </View>
       
       <ThemedText style={styles.dateText}>{formatDate(item.date)}</ThemedText>
-      <ThemedText style={styles.durationText}>{item.duration} minutes</ThemedText>
+      {item.duration > 0 && (
+        <ThemedText style={styles.durationText}>{item.duration}</ThemedText>
+      )}
       
       {item.note && (
         <ThemedText style={styles.noteText}>{item.note}</ThemedText>

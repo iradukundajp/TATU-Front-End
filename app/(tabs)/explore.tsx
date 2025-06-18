@@ -263,17 +263,29 @@ export default function ExploreScreen() {
               <TouchableFix
                 key={design.id}
                 style={styles.designCard}
-                onPress={() => handleDesignPress(design)}
+                onPress={() => {
+                  if (design.artist && design.artist.id) {
+                    router.push(`/artist/${design.artist.id}`);
+                  }
+                }}
               >
                 <Image 
                   source={{ 
-                    uri: `${design.imageUrl.startsWith('http') ? '' : 'http://localhost:5000'}${design.imageUrl}` 
+                    uri: design.imageUrl.startsWith('http')
+                      ? design.imageUrl
+                      : `${process.env.EXPO_PUBLIC_API_BASE_URL}${design.imageUrl}`
                   }} 
                   style={styles.designImage}
                   contentFit="cover"
                 />
                 <View style={styles.designOverlay}>
                   <ThemedText style={styles.designTitle}>{design.title}</ThemedText>
+                  {/* Artist credit */}
+                  {design.artist && design.artist.name && (
+                    <ThemedText style={{ color: '#3b82f6', marginTop: 4, fontSize: 12 }}>
+                      By {design.artist.name}
+                    </ThemedText>
+                  )}
                 </View>
               </TouchableFix>
             ))}

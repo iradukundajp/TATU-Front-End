@@ -134,8 +134,11 @@ export default function SearchResultsScreen() {
   };
 
   const handleDesignPress = (design: TattooDesign) => {
-    console.log('Design pressed:', design);
-    alert(`Design: ${design.title}\\nStyle: ${design.style}`);
+    if (design.artist && design.artist.id) {
+      router.push(`/artist/${design.artist.id}`);
+    } else {
+      alert(`Design: ${design.title}\nStyle: ${design.style}`);
+    }
   };
 
   const toggleArtistsFilter = () => {
@@ -179,6 +182,12 @@ export default function SearchResultsScreen() {
         />
         <ThemedText style={styles.designTitle} numberOfLines={1}>{item.title}</ThemedText>
         <ThemedText style={styles.designStyle} numberOfLines={1}>{item.style}</ThemedText>
+        {/* Artist credit */}
+        {item.artist && item.artist.name && (
+          <ThemedText style={{ color: '#3b82f6', marginTop: 4, fontSize: 12 }}>
+            By {item.artist.name}
+          </ThemedText>
+        )}
       </TouchableOpacity>
     );
   };  

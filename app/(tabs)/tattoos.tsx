@@ -297,6 +297,9 @@ export default function TattoosScreen() {
   
   // Render an individual design card
   const renderDesignItem = ({ item }: { item: TattooDesign }) => {
+    const imageUrl = item.imageUrl.startsWith('http')
+      ? item.imageUrl
+      : `${process.env.EXPO_PUBLIC_API_BASE_URL}${item.imageUrl}`;
     return (
       <TouchableFix
         style={styles.designCard}
@@ -306,7 +309,7 @@ export default function TattoosScreen() {
         }}
       >
         <Image
-          source={{ uri: `${item.imageUrl.startsWith('http') ? '' : 'http://localhost:5000'}${item.imageUrl}` }}
+          source={{ uri: imageUrl }}
           style={styles.designImage}
           contentFit="cover"
           transition={300}
@@ -317,7 +320,15 @@ export default function TattoosScreen() {
             <ThemedText type="default" style={styles.styleTag}>{item.style}</ThemedText>
             {item.price && <ThemedText type="default">${item.price}</ThemedText>}
           </View>
-          {isArtist() && ( // Changed from isArtist to isArtist()
+          {/* Artist credit and link */}
+          {item.artist && item.artist.id && item.artist.name && (
+            <TouchableOpacity onPress={() => router.push(`/artist/${item.artist!.id}`)}>
+              <ThemedText type="default" style={{ color: '#3b82f6', marginTop: 4 }}>
+                By {item.artist.name}
+              </ThemedText>
+            </TouchableOpacity>
+          )}
+          {isArtist() && (
             <TouchableOpacity
               style={styles.deleteButton}
               onPress={() => handleDeleteDesign(item)}

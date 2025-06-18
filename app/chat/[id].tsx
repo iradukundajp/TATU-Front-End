@@ -20,6 +20,48 @@ import { IconSymbol } from '@/components/ui/IconSymbol';
 import { useAuth } from '@/contexts/AuthContext';
 import { useMessages } from '@/hooks/useMessages';
 import { Message } from '@/types/message';
+import * as aftercareService from '@/services/aftercare.service';
+
+function AftercareMessageBubble({ aftercareData, isMyMessage, router }: { aftercareData: { bookingId: string; aftercareId: string }, isMyMessage: boolean, router: any }) {
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
+  useEffect(() => {
+    let isMounted = true;
+    async function fetchPreview() {
+      if (aftercareData && aftercareData.aftercareId) {
+        try {
+          const data = await aftercareService.getAftercare(aftercareData.bookingId);
+          if (isMounted && data && data.images && data.images.length > 0) {
+            setPreviewImage(data.images[0]);
+          }
+        } catch {}
+      }
+    }
+    fetchPreview();
+    return () => { isMounted = false; };
+  }, [aftercareData]);
+  return (
+    <View style={[
+      styles.messageBubble,
+      isMyMessage ? styles.myMessageBubble : styles.otherMessageBubble
+    ]}>
+      <ThemedText style={styles.messageText}>
+        {isMyMessage ? 'You sent aftercare instructions.' : 'Aftercare instructions have been sent.'}
+      </ThemedText>
+      {previewImage && (
+        <Image
+          source={{ uri: previewImage }}
+          style={styles.aftercarePreviewImage}
+        />
+      )}
+      <TouchableOpacity
+        style={styles.aftercareButton}
+        onPress={() => router.push(`/aftercare/${aftercareData.bookingId}`)}
+      >
+        <ThemedText style={styles.aftercareButtonText}>View Aftercare</ThemedText>
+      </TouchableOpacity>
+    </View>
+  );
+}
 
 export default function ChatScreen() {
   const { id: conversationId, otherUserId, otherUserName } = useLocalSearchParams();
@@ -44,7 +86,7 @@ export default function ChatScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [sending, setSending] = useState(false);
   const flatListRef = useRef<FlatList>(null);
-  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Use focus effect to mark messages as read when screen is focused
   useFocusEffect(
@@ -130,15 +172,27 @@ export default function ChatScreen() {
 
   const renderMessage = ({ item }: { item: Message }) => {
     const isMyMessage = item.senderId === user?.id;
-    
-    // Debug logging
-    console.log('Message:', {
-      content: item.content.substring(0, 20) + '...',
-      senderId: item.senderId,
-      currentUserId: user?.id,
-      isMyMessage
-    });
-    
+
+    // Handle aftercare message type
+    if (item.messageType === 'aftercare') {
+      let aftercareData: { bookingId: string; aftercareId: string } | null = null;
+      try {
+        aftercareData = JSON.parse(item.content);
+      } catch (e) {
+        // fallback: show raw content
+      }
+      return (
+        <View style={[
+          styles.messageContainer,
+          isMyMessage ? styles.myMessageContainer : styles.otherMessageContainer
+        ]}>
+          {aftercareData && (
+            <AftercareMessageBubble aftercareData={aftercareData} isMyMessage={isMyMessage} router={router} />
+          )}
+        </View>
+      );
+    }
+
     return (
       <View style={[
         styles.messageContainer,
@@ -417,4 +471,25 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 24,
   },
-}); 
+  aftercareButton: {
+    marginTop: 8,
+    backgroundColor: '#007AFF',
+    borderRadius: 6,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    alignItems: 'center',
+  },
+  aftercareButtonText: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 15,
+  },
+  aftercarePreviewImage: {
+    width: 100,
+    height: 100,
+    borderRadius: 8,
+    marginTop: 8,
+    marginBottom: 8,
+    alignSelf: 'center',
+  },
+});
