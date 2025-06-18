@@ -124,7 +124,7 @@ export async function startConversation(userId: string): Promise<any> {
   try {
     console.log(`Starting conversation with user: ${userId}`);
     
-    const response = await api.post<any>(`/api/messages/conversations/${userId}`);
+    const response = await api.post<any>(`/api/messages/conversations/${userId}`, {});
     console.log('Conversation started:', response);
     
     return response;
