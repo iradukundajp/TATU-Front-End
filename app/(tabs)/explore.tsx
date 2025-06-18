@@ -1,6 +1,6 @@
 import { Image } from 'expo-image';
-import React, { useState, useEffect, useContext } from 'react'; // Added useContext
-import { Platform, StyleSheet, View, FlatList, TouchableOpacity, ActivityIndicator, TextInput, Alert } from 'react-native';
+import React, { useState, useEffect, useContext } from 'react';
+import { Platform, StyleSheet, View, FlatList, TouchableOpacity, ActivityIndicator, TextInput, Alert, ImageBackground } from 'react-native';
 import { router } from 'expo-router';
 
 import { Collapsible } from '@/components/Collapsible';
@@ -13,11 +13,11 @@ import { ArtistCard } from '@/components/ArtistCard';
 import { IconSymbol } from '@/components/ui/IconSymbol';
 import * as artistService from '@/services/artist.service';
 import * as tattooService from '@/services/tattoo.service';
-import * as messageService from '@/services/message.service'; // Added messageService
+import * as messageService from '@/services/message.service';
 import { Artist } from '@/types/artist';
 import { TattooDesign } from '@/types/tattooDesign';
-import { AuthContext, AuthState } from '@/contexts/AuthContext'; // Added AuthContext and AuthState
-import { Conversation } from '@/types/message'; // Added Conversation
+import { AuthContext, AuthState } from '@/contexts/AuthContext';
+import { Conversation } from '@/types/message';
 
 export default function ExploreScreen() {
   const [featuredArtists, setFeaturedArtists] = useState<Artist[]>([]);
@@ -25,8 +25,40 @@ export default function ExploreScreen() {
   const [loading, setLoading] = useState(true);
   const [designsLoading, setDesignsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  const auth = useContext(AuthContext) as AuthState; // Type assertion for auth context
-  const user = auth?.user; // Get user from typed auth context
+  const auth = useContext(AuthContext) as AuthState;
+  const user = auth?.user;
+
+  const HeaderImage = () => (
+    <View style={styles.headerContainer}>
+      <View style={styles.backgroundContainer}>
+        <ImageBackground 
+          source={{ uri: 'https://images.unsplash.com/photo-1541961017774-22349e4a1262?w=1920&h=1080&fit=crop&crop=center' }} 
+          style={styles.backgroundImage}
+          resizeMode="cover"
+        >
+          <View style={styles.gradientOverlay} />
+        </ImageBackground>
+      </View>
+      
+      {/* Modern Title Design */}
+      <View style={styles.titleContainer}>
+        <View style={styles.titleWrapper}>
+          <ThemedText style={styles.mainTitle}>TATU</ThemedText>
+          <View style={styles.titleUnderline} />
+        </View>
+        <ThemedText style={styles.subtitle}>
+          Find, Preview & Book the Best Tattoo Artists
+        </ThemedText>
+        
+        {/* Decorative elements */}
+        <View style={styles.decorativeElements}>
+          <View style={styles.decorativeDot} />
+          <View style={styles.decorativeLine} />
+          <View style={styles.decorativeDot} />
+        </View>
+      </View>
+    </View>
+  );
 
   useEffect(() => {
     Promise.all([
@@ -49,7 +81,6 @@ export default function ExploreScreen() {
   const fetchRecentDesigns = async () => {
     setDesignsLoading(true);
     try {
-      // Get the latest designs, sorted by creation date
       const response = await tattooService.getAllTattooDesigns({
         limit: 3,
         page: 1,
@@ -88,7 +119,6 @@ export default function ExploreScreen() {
       if (conversation && conversation.id) {
         router.push(`/chat/${conversation.id}` as any);
       } else {
-        // Fallback to check existing conversations
         const existingConversations: Conversation[] = await messageService.getUserConversations();
         const existingConvo = existingConversations.find(c => c.otherUser.id === artistId);
 
@@ -105,11 +135,9 @@ export default function ExploreScreen() {
   };
 
   const handleDesignPress = (design: TattooDesign) => {
-    // Navigate to tattoos screen instead of non-existent artist detail page
     const tattoosPath = '/tattoos' as const;
     router.push(tattoosPath as any);
     
-    // Alert with design information for now
     Alert.alert(
       design.title,
       `${design.description || 'No description'}\n\nStyle: ${design.style}\n${design.price ? `Price: $${design.price}` : ''}`,
@@ -118,33 +146,23 @@ export default function ExploreScreen() {
   };
 
   const renderArtistCard = ({ item }: { item: Artist }) => {
-    console.log(`ExploreScreen: Rendering ArtistCard for ${item.name} (ID: ${item.id}). Avatar Config:`, item.avatarConfiguration ? 'Present' : 'Absent', 'Full artist object:', item); // Added detailed log
+    console.log(`ExploreScreen: Rendering ArtistCard for ${item.name} (ID: ${item.id}). Avatar Config:`, item.avatarConfiguration ? 'Present' : 'Absent', 'Full artist object:', item);
     return (
       <ArtistCard
         artist={item}
         onPress={handleArtistPress}
-        showBookingButton={false} // Explicitly hide Book Appointment button
-        showSendMessageButton={true} // Keep Send Message button visible
-        onSendMessage={() => handleSendMessage(item.id)} // Use new handler
+        showBookingButton={false}
+        showSendMessageButton={true}
+        onSendMessage={() => handleSendMessage(item.id)}
       />
     );
   };
 
   return (
     <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <ThemedView style={styles.headerTextView}>
-          <ThemedText
-            type="title"
-            style={styles.headerText}
-            numberOfLines={1}
-            adjustsFontSizeToFit={true}
-          >
-            TATU
-          </ThemedText>
-        </ThemedView>
-      }>
+      headerBackgroundColor={{ light: '#000000', dark: '#000000' }}
+      headerImage={<HeaderImage />}
+    >
       
       <View style={styles.searchContainer}>
         <View style={styles.searchInputContainer}>
@@ -166,7 +184,7 @@ export default function ExploreScreen() {
         </View>
       </View>
       
-      <ThemedView style={styles.sectionContainer}>
+      <View style={styles.sectionContainer}>
         <ThemedText type="subtitle" style={styles.sectionTitle}>Popular Categories</ThemedText>
         <View style={styles.categoriesContainer}>
           <TouchableFix 
@@ -213,9 +231,9 @@ export default function ExploreScreen() {
             <ThemedText style={styles.categoryText}>Watercolor</ThemedText>
           </TouchableFix>
         </View>
-      </ThemedView>
+      </View>
 
-      <ThemedView style={styles.sectionContainer}>
+      <View style={styles.sectionContainer}>
         <View style={styles.sectionHeader}>
           <ThemedText type="subtitle" style={styles.sectionTitle}>Featured Artists</ThemedText>
           <TouchableFix onPress={() => {
@@ -237,14 +255,14 @@ export default function ExploreScreen() {
             ))}
           </View>
         ) : (
-          <ThemedView style={styles.emptyStateContainer}>
+          <View style={styles.emptyStateContainer}>
             <IconSymbol name="person.2.slash" size={40} color="#555555" />
             <ThemedText style={styles.emptyStateText}>No artists found</ThemedText>
-          </ThemedView>
+          </View>
         )}
-      </ThemedView>
+      </View>
 
-      <ThemedView style={styles.sectionContainer}>
+      <View style={styles.sectionContainer}>
         <View style={styles.sectionHeader}>
           <ThemedText type="subtitle" style={styles.sectionTitle}>New Designs</ThemedText>
           <TouchableFix onPress={() => {
@@ -280,7 +298,6 @@ export default function ExploreScreen() {
                 />
                 <View style={styles.designOverlay}>
                   <ThemedText style={styles.designTitle}>{design.title}</ThemedText>
-                  {/* Artist credit */}
                   {design.artist && design.artist.name && (
                     <ThemedText style={{ color: '#3b82f6', marginTop: 4, fontSize: 12 }}>
                       By {design.artist.name}
@@ -291,28 +308,113 @@ export default function ExploreScreen() {
             ))}
           </View>
         ) : (
-          <ThemedView style={styles.emptyStateContainer}>
+          <View style={styles.emptyStateContainer}>
             <IconSymbol name="photo.stack" size={40} color="#555555" />
             <ThemedText style={styles.emptyStateText}>No designs found</ThemedText>
-          </ThemedView>
+          </View>
         )}
-      </ThemedView>
+      </View>
     </ParallaxScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  headerTextView: {
+  headerContainer: {
+    flex: 1,
+    position: 'relative',
+    width: '100%',
+    height: '100%',
+  },
+  backgroundContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+  },
+  backgroundImage: {
+    flex: 1,
+    width: '100%',
+    height: '100%',
+  },
+  gradientOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+  },
+  titleContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    paddingHorizontal: 20,
+    zIndex: 1,
   },
-  headerText: {
-    fontSize: 36,
-    fontWeight: 'bold',
+  titleWrapper: {
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  mainTitle: {
+    fontSize: 72,
+    fontWeight: '900',
     color: '#FFFFFF',
     textAlign: 'center',
+    letterSpacing: 8,
+    textShadowColor: 'rgba(0, 0, 0, 0.8)',
+    textShadowOffset: { width: 0, height: 6 },
+    textShadowRadius: 12,
+    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'sans-serif-condensed',
+    textDecorationLine: 'none',
   },
+  titleUnderline: {
+    width: 120,
+    height: 4,
+    backgroundColor: '#FFD700',
+    marginTop: 8,
+    borderRadius: 2,
+    shadowColor: '#FFD700',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 1,
+    shadowRadius: 12,
+    elevation: 8, 
+  },
+  subtitle: {
+    fontSize: 18,
+    color: '#FFFFFF',
+    textAlign: 'center',
+    fontWeight: '300',
+    letterSpacing: 1,
+    opacity: 0.95,
+    textShadowColor: 'rgba(0, 0, 0, 0.7)',
+    textShadowOffset: { width: 0, height: 3 },
+    textShadowRadius: 6,
+    lineHeight: 24,
+  },
+  decorativeElements: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 24,
+  },
+  decorativeDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#FFD700',
+    marginHorizontal: 8,
+    shadowColor: '#FFD700',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 1,
+    shadowRadius: 8,
+    elevation: 6, 
+  },
+  decorativeLine: {
+    width: 60,
+    height: 1,
+    backgroundColor: 'rgba(255, 255, 255, 0.8)',
+    shadowColor: 'rgba(255, 255, 255, 0.5)',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 1,
+    shadowRadius: 2,
+  },
+
   searchContainer: {
     paddingHorizontal: 16,
     paddingTop: 16,
