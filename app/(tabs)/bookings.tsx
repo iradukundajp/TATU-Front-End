@@ -216,7 +216,27 @@ export default function BookingsScreen() {
             <ThemedText style={styles.actionButtonText}>Cancel Booking</ThemedText>
           </TouchableFix>
         )}
-        
+       
+        {/* Only show for non-artist users with completed booking and aftercare */}
+        {user && user.isArtist !== true && item.status === 'completed' && item.aftercare && (
+          <TouchableFix
+            style={[styles.actionButton, styles.viewButton]}
+            onPress={() => router.push(`/aftercare/${item.id}` as any)}
+          >
+            <IconSymbol name="bandage.fill" size={16} color="#FFFFFF" />
+            <ThemedText style={styles.actionButtonText}>View Aftercare</ThemedText>
+          </TouchableFix>
+        )}
+        {/* Only show for artists: Suggest/Update Aftercare */}
+        {user?.isArtist && item.status === 'completed' && (
+          <TouchableFix
+            style={[styles.actionButton, styles.reviewButton]}
+            onPress={() => router.push(`/aftercare/suggest/${item.id}` as any)}
+          >
+            <IconSymbol name={item.aftercare ? 'pencil.circle.fill' : 'plus.circle.fill'} size={16} color="#FFFFFF" />
+            <ThemedText style={styles.actionButtonText}>{item.aftercare ? 'Update Aftercare' : 'Suggest Aftercare'}</ThemedText>
+          </TouchableFix>
+        )}
         {item.status === 'completed' && (
           <TouchableFix 
             style={[styles.actionButton, styles.reviewButton]} 
@@ -226,7 +246,6 @@ export default function BookingsScreen() {
             <ThemedText style={styles.actionButtonText}>Leave Review</ThemedText>
           </TouchableFix>
         )}
-        
         <TouchableFix 
           style={[styles.actionButton, styles.viewButton]} 
           onPress={() => handleViewArtist(item.artistId)}
@@ -530,5 +549,9 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '500',
     marginLeft: 4,
+  },
+  /* DEBUG LOGGING for aftercare button logic */
+  debugAftercare: {
+    display: 'none',
   },
 });

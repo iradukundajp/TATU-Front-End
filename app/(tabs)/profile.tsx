@@ -260,7 +260,7 @@ export default function ProfileScreen() {
                 <>
                   <View style={styles.tagContainer}>
                     {specialties.map((spec, index) => (
-                      <View key={index} style={styles.tag}>
+                      <View key={spec + '-' + index} style={styles.tag}>
                         <ThemedText style={styles.tagText}>{spec}</ThemedText>
                         <TouchableOpacity onPress={() => handleRemoveSpecialty(spec)} style={styles.removeTagButton}>
                           <IconSymbol name="xmark.circle.fill" size={16} color="#FFFFFF" />
@@ -285,7 +285,7 @@ export default function ProfileScreen() {
                 <View style={styles.tagContainer}>
                   {user.specialties && user.specialties.length > 0 ? (
                     user.specialties.map((spec, index) => (
-                      <View key={index} style={styles.tagView}>
+                      <View key={spec + '-' + index} style={styles.tagView}>
                         <ThemedText style={styles.tagText}>{spec}</ThemedText>
                       </View>
                     ))
@@ -302,7 +302,7 @@ export default function ProfileScreen() {
                 <>
                   <View style={styles.tagContainer}>
                     {tattooStyles.map((style, index) => (
-                      <View key={index} style={styles.tag}>
+                      <View key={style + '-' + index} style={styles.tag}>
                         <ThemedText style={styles.tagText}>{style}</ThemedText>
                         <TouchableOpacity onPress={() => handleRemoveStyle(style)} style={styles.removeTagButton}>
                           <IconSymbol name="xmark.circle.fill" size={16} color="#FFFFFF" />
@@ -327,7 +327,7 @@ export default function ProfileScreen() {
                 <View style={styles.tagContainer}>
                   {user.styles && user.styles.length > 0 ? (
                     user.styles.map((style, index) => (
-                      <View key={index} style={styles.tagView}>
+                      <View key={style + '-' + index} style={styles.tagView}>
                         <ThemedText style={styles.tagText}>{style}</ThemedText>
                       </View>
                     ))

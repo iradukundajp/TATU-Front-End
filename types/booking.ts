@@ -1,3 +1,5 @@
+import type { Aftercare } from '../services/aftercare.service';
+
 export type BookingStatus = 'pending' | 'confirmed' | 'completed' | 'cancelled';
 
 export interface Booking {
@@ -13,6 +15,7 @@ export interface Booking {
   note?: string;
   createdAt?: string;
   updatedAt?: string;
+  aftercare?: Aftercare; // Optional aftercare property
 }
 
 export interface CreateBookingData {
@@ -24,4 +27,4 @@ export interface CreateBookingData {
 
 export interface UpdateBookingStatusData {
   status: BookingStatus;
-} 
+}

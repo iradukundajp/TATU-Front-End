@@ -135,7 +135,6 @@ export default function ManageBookingsScreen() {
               <IconSymbol name="checkmark.circle.fill" size={16} color="#FFFFFF" />
               <ThemedText style={styles.actionButtonText}>Confirm</ThemedText>
             </TouchableFix>
-            
             <TouchableFix 
               style={[styles.actionButton, styles.cancelButton]} 
               onPress={() => handleStatusChange(item.id, 'cancelled')}
@@ -145,7 +144,6 @@ export default function ManageBookingsScreen() {
             </TouchableFix>
           </>
         )}
-        
         {item.status === 'confirmed' && (
           <>
             <TouchableFix 
@@ -155,7 +153,6 @@ export default function ManageBookingsScreen() {
               <IconSymbol name="flag.checkered" size={16} color="#FFFFFF" />
               <ThemedText style={styles.actionButtonText}>Mark Complete</ThemedText>
             </TouchableFix>
-            
             <TouchableFix 
               style={[styles.actionButton, styles.cancelButton]} 
               onPress={() => handleStatusChange(item.id, 'cancelled')}
@@ -164,6 +161,15 @@ export default function ManageBookingsScreen() {
               <ThemedText style={styles.actionButtonText}>Cancel</ThemedText>
             </TouchableFix>
           </>
+        )}
+        {item.status === 'completed' && (
+          <TouchableFix
+            style={[styles.actionButton, styles.completeButton]}
+            onPress={() => router.push(`/aftercare/suggest/${item.id}` as any)}
+          >
+            <IconSymbol name={item.aftercare ? 'pencil.circle.fill' : 'plus.circle.fill'} size={16} color="#FFFFFF" />
+            <ThemedText style={styles.actionButtonText}>{item.aftercare ? 'Update Aftercare' : 'Suggest Aftercare'}</ThemedText>
+          </TouchableFix>
         )}
       </View>
     </View>
