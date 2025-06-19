@@ -28,8 +28,10 @@ export default function ExploreScreen() {
   const auth = useContext(AuthContext) as AuthState;
   const user = auth?.user;
 
+  // Create header image as a separate component to avoid TypeScript issues
   const HeaderImage = () => (
     <View style={styles.headerContainer}>
+      {/* Background with image and gradient overlay */}
       <View style={styles.backgroundContainer}>
         <ImageBackground 
           source={{ uri: 'https://images.unsplash.com/photo-1541961017774-22349e4a1262?w=1920&h=1080&fit=crop&crop=center' }} 
@@ -319,11 +321,13 @@ export default function ExploreScreen() {
 }
 
 const styles = StyleSheet.create({
+  // Modern Header Styles
   headerContainer: {
     flex: 1,
     position: 'relative',
     width: '100%',
     height: '100%',
+    minHeight: 250, // Reduced minimum height
   },
   backgroundContainer: {
     position: 'absolute',
@@ -339,13 +343,15 @@ const styles = StyleSheet.create({
   },
   gradientOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    backgroundColor: 'rgba(0, 0, 0, 0.6)', // Darker overlay for better text readability
   },
   titleContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 20,
+    paddingTop: 60, // Increased padding to avoid cutoff
+    paddingBottom: 40, // Increased bottom padding
     zIndex: 1,
   },
   titleWrapper: {
@@ -353,16 +359,15 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   mainTitle: {
-    fontSize: 72,
+    fontSize: 42, // Made even smaller
     fontWeight: '900',
     color: '#FFFFFF',
     textAlign: 'center',
-    letterSpacing: 8,
+    letterSpacing: 3, // Reduced letter spacing
     textShadowColor: 'rgba(0, 0, 0, 0.8)',
-    textShadowOffset: { width: 0, height: 6 },
-    textShadowRadius: 12,
-    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'sans-serif-condensed',
-    textDecorationLine: 'none',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 4,
+    lineHeight: 50, // Added line height to ensure proper spacing
   },
   titleUnderline: {
     width: 120,
@@ -374,7 +379,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 1,
     shadowRadius: 12,
-    elevation: 8, 
+    elevation: 8, // For Android shadow
   },
   subtitle: {
     fontSize: 18,
@@ -403,7 +408,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 1,
     shadowRadius: 8,
-    elevation: 6, 
+    elevation: 6, // For Android
   },
   decorativeLine: {
     width: 60,
@@ -415,6 +420,7 @@ const styles = StyleSheet.create({
     shadowRadius: 2,
   },
 
+  // Rest of the styles remain the same
   searchContainer: {
     paddingHorizontal: 16,
     paddingTop: 16,
